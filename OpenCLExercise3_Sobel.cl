@@ -13,7 +13,7 @@ float getValueGlobal(__global const float* a, size_t countX, size_t countY, int 
 		return a[getIndexGlobal(countX, i, j)];
 }
 
-__kernel void sobelKernel(__global float* d_input, __global float* d_output) {
+__kernel void sobelKernel(__global float* d_input, __global float* d_output, __global int* d_out_segment) {
 
 
 	uint i = get_global_id(0);
@@ -29,13 +29,13 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output) {
 	
 	d_output[getIndexGlobal(countX, i, j)] = sqrt(Gx * Gx + Gy * Gy);
 	
-	/*double theta = std::atan2(Gy, Gx);
+	float theta = atan2(Gy, Gx);
 
-	theta = theta * (360.0 / (2.0 * M_PI));
+	theta = theta * (360.0 / (2.0 * 3.14159265358979323846264338327950288));
 
 	int segment = 0;
 			
-	if ((theta <= 22.5 && theta >= -22.5) || (theta <= -157.5) || (theta >= 157.5)) 
+	if ((theta <= 22.5 && theta >= -22.5) || (theta <= -157.5) || (theta >= 157.5))
 		segment = 1;  // "-"
 	else if ((theta > 22.5 && theta <= 67.5) || (theta > -157.5 && theta <= -112.5))
 		segment = 2;  // "/" 
@@ -44,9 +44,9 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output) {
 	else if ((theta >= -67.5 && theta < -22.5) || (theta > 112.5 && theta < 157.5))
 		segment = 4;  // "\"  
 	else
-		std::cout << "error " << theta << std::endl;
+		segment = 0;
 	
-	d_out_segment[getIndexGlobal(countX, i, j)] = segment;*/
+	d_out_segment[getIndexGlobal(countX, i, j)] = segment;
 			
 
 }

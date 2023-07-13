@@ -189,7 +189,7 @@ void apply_edge_hysteresis(std::vector<float>& h_outputCpu, const std::vector<fl
 		}
 	}
 }
-/*To Do CPU: Apply step 4 on h_outputCpu2 and then step 5 on its output*/
+
 //////////////////////////////////////////////////////////////////////////////
 // Main function
 //////////////////////////////////////////////////////////////////////////////
@@ -248,10 +248,10 @@ int main(int argc, char** argv) {
 	std::vector<float> h_outputCpu_Sobel(count);
 	std::vector<int>   h_out_segment(count);
 	std::vector<float> h_outputCpu_NonMaxSupression(count);
-	std::vector<float> h_outputGpu (count);
-
 	std::vector<float> h_outputCpu_DoubleThreshold(count);
 	std::vector<float> h_outputCpu_Hysteresis(count);
+	std::vector<float> h_outputGpu(count);
+	std::vector<int> h_out_segmentGpu(count);
 	
 
 	// Allocate space for input and output data on the device
@@ -272,6 +272,7 @@ int main(int argc, char** argv) {
 	memset(h_outputCpu_DoubleThreshold.data(), 255, size);
 	memset(h_outputCpu_Hysteresis.data(), 255, size);
 	memset(h_outputGpu.data(), 255, size);
+	memset(h_out_segmentGpu.data(), 255, size);
 	//TODO: GPU
 
 	//////// Load input data ////////////////////////////////
@@ -305,89 +306,82 @@ int main(int argc, char** argv) {
 	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_Hysterisis.pgm", h_outputCpu_Hysteresis, countX, countY);
 	std::cout << std::endl;
 
+	// Reinitialize output memory to 0xff
+	memset(h_outputGpu.data(), 255, size);
+	memset(h_out_segmentGpu.data(), 255, size);
+	//TODO: GPU
+
+	// Copy input data to device
+	//TODO
+	cl::Event event1;
+	queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
+
+
+	// Create a kernel object
+	cl::Kernel sobelKernel(program, "sobelKernel");
+
+
+	// Launch kernel on the device
+	//TODO
+	sobelKernel.setArg<cl::Buffer>(0, d_input);
+	sobelKernel.setArg<cl::Buffer>(1, d_output);
+	sobelKernel.setArg<cl::Buffer>(2, d_out_segment);
+
+
+	cl::Event event2;
+	queue.enqueueNDRangeKernel(sobelKernel,
+		cl::NullRange,
+		cl::NDRange(countX, countY),
+		cl::NDRange(wgSizeX, wgSizeY),
+		NULL,
+		&event2);
+
+	// Copy output data back to host
+	//TODO
+
+	cl::Event event3;
+	queue.enqueueReadBuffer(d_output, true, 0, size, h_outputGpu.data(), NULL, &event3);
+	queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &event3);
 	
-	// Iterate over all implementations (task 1 - 3)
-	for (int impl = 1; impl <= 1; impl++) {
-		std::cout << "Implementation #" << impl << ":" << std::endl;
+	
+	// Print performance data
+	//TODO
+	std::cout << "performance data for implementation :" << std::endl;
+	Core::TimeSpan cputime = cpuend - cpubegin;
+	std::cout << "cpu time: " << cputime.toString() << std::endl;
+	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(event2);
 
-		// Reinitialize output memory to 0xff
-		memset(h_outputGpu.data(), 255, size);
-		//TODO: GPU
+	Core::TimeSpan gputime2 = OpenCL::getElapsedTime(event3);
 
-		// Copy input data to device
-		//TODO
+	Core::TimeSpan totalgputime = gputime1 + gputime2;
+	std::cout << "GPU time before copying output data: " << gputime1.toString() << " speedup before copy = " << (cputime.getSeconds() / gputime1.getSeconds()) << std::endl;
+	std::cout << "GPU time after copying output data: " << totalgputime.toString() << " speedup after copy = " << (cputime.getSeconds() / totalgputime.getSeconds()) << std::endl;
 
+	//////// Store GPU output image ///////////////////////////////////
+	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu, countX, countY);
 
-		cl::Event event1;
-		
-		queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
-
-
-		// Create a kernel object
-		
-		cl::Kernel sobelKernel(program, "sobelKernel");
-
-		// Launch kernel on the device
-		//TODO
-		
-		sobelKernel.setArg<cl::Buffer>(0, d_input);
-		sobelKernel.setArg<cl::Buffer>(1, d_output);
-		//sobelKernel.setArg<cl::Buffer>(2, d_out_segment);
-		
-		
-		cl::Event event2;
-
-		queue.enqueueNDRangeKernel(sobelKernel,
-			cl::NullRange,
-			cl::NDRange(countX, countY),
-			cl::NDRange(wgSizeX, wgSizeY),
-			NULL,
-			&event2);
-
-		// Copy output data back to host
-		//TODO
-
-		cl::Event event3;
-		queue.enqueueReadBuffer(d_output, true, 0, size, h_outputGpu.data(), NULL, &event3);
-		//queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_outputGpu.data(), NULL, &event3);
-		// Print performance data
-		//TODO
-		std::cout << "performance data for implementation "<<impl<<":"<< std::endl;
-		Core::TimeSpan cputime = cpuend - cpubegin;
-		std::cout << "cpu time: " << cputime.toString() << std::endl;
-		Core::TimeSpan gputime1 = OpenCL::getElapsedTime(event2);
-
-		Core::TimeSpan gputime2 = OpenCL::getElapsedTime(event3); 
-
-		Core::TimeSpan totalgputime = gputime1+gputime2;
-		std::cout << "GPU time before copying output data: " << gputime1.toString() << " speedup before copy = " << (cputime.getSeconds() / gputime1.getSeconds())<< std::endl;
-		std::cout << "GPU time after copying output data: " << totalgputime.toString() << " speedup after copy = " << (cputime.getSeconds() / totalgputime.getSeconds())<< std::endl;
-
-		//////// Store GPU output image ///////////////////////////////////
-		Core::writeImagePGM("output_sobel_gpu_" + boost::lexical_cast<std::string> (impl) + ".pgm", h_outputGpu, countX, countY);
-
-		// Check whether results are correct
-		std::size_t errorCount = 0;
-		for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction
-			for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
-				size_t index = i + j * countX;
-				// Allow small differences between CPU and GPU results (due to different rounding behavior)
-				if (!(std::abs (h_outputCpu_Gaussian[index] - h_outputGpu[index]) <= 1e-5)) {
-					if (errorCount < 15)
-						std::cout << "Result for " << i << "," << j << " is incorrect: GPU value is " << h_outputGpu[index] << ", CPU value is " << h_outputCpu_Gaussian[index] << std::endl;
-					else if (errorCount == 15)
-						std::cout << "..." << std::endl;
-					errorCount++;
-				}
+	// Check whether results are correct
+	std::size_t errorCount = 0;
+	for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction
+		for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
+			size_t index = i + j * countX;
+			// Allow small differences between CPU and GPU results (due to different rounding behavior)
+			if (!(std::abs(h_outputCpu_Gaussian[index] - h_outputGpu[index]) <= 1e-5)) {
+				if (errorCount < 15)
+					std::cout << "Result for " << i << "," << j << " is incorrect: GPU value is " << h_outputGpu[index] << ", CPU value is " << h_outputCpu_Gaussian[index] << std::endl;
+				else if (errorCount == 15)
+					std::cout << "..." << std::endl;
+				errorCount++;
 			}
 		}
-		if (errorCount != 0) {
-			std::cout << "Found " << errorCount << " incorrect results" << std::endl;
-			return 1;
-		}
-
-		std::cout << std::endl;
 	}
+	if (errorCount != 0) {
+		std::cout << "Found " << errorCount << " incorrect results" << std::endl;
+		return 1;
+	} 
+
+	std::cout << std::endl;
+	
 
 	std::cout << "Success" << std::endl;
 
