@@ -158,7 +158,7 @@ void apply_double_threshold(std::vector<float>& h_outputCpu, const std::vector<f
 	
 	for (int i = 0; i < (int)countX; i++) {
 		for (int j = 0; j < (int)countY; j++) {
-			std::cout << h_input[getIndexGlobal(countX, i, j)] << ", ";
+			
 			if (h_input[getIndexGlobal(countX, i, j)] > highThreshold)
 				h_outputCpu[getIndexGlobal(countX, i, j)] = 1.0;      //absolutely edge
 			else if (h_input[getIndexGlobal(countX, i, j)] > lowThreshold)
@@ -307,7 +307,7 @@ int main(int argc, char** argv) {
 
 	
 	// Iterate over all implementations (task 1 - 3)
-	for (int impl = 1; impl <= 3; impl++) {
+	for (int impl = 1; impl <= 1; impl++) {
 		std::cout << "Implementation #" << impl << ":" << std::endl;
 
 		// Reinitialize output memory to 0xff
@@ -319,23 +319,22 @@ int main(int argc, char** argv) {
 
 
 		cl::Event event1;
-		queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, &event1);
+		
+		queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
 
 
 		// Create a kernel object
-		std::string kernelName = "sobelKernel" + boost::lexical_cast<std::string> (impl);
-		cl::Kernel sobelKernel(program, kernelName.c_str ());
+		
+		cl::Kernel sobelKernel(program, "sobelKernel");
 
 		// Launch kernel on the device
 		//TODO
-		if (impl == 1)
-		{
-			sobelKernel.setArg<cl::Buffer>(0, d_input);
-			sobelKernel.setArg<cl::Buffer>(1, d_output);
-		}
-		if (impl == 2);
-		if (impl == 3);
-
+		
+		sobelKernel.setArg<cl::Buffer>(0, d_input);
+		sobelKernel.setArg<cl::Buffer>(1, d_output);
+		//sobelKernel.setArg<cl::Buffer>(2, d_out_segment);
+		
+		
 		cl::Event event2;
 
 		queue.enqueueNDRangeKernel(sobelKernel,
@@ -350,7 +349,7 @@ int main(int argc, char** argv) {
 
 		cl::Event event3;
 		queue.enqueueReadBuffer(d_output, true, 0, size, h_outputGpu.data(), NULL, &event3);
-
+		//queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_outputGpu.data(), NULL, &event3);
 		// Print performance data
 		//TODO
 		std::cout << "performance data for implementation "<<impl<<":"<< std::endl;

@@ -2,29 +2,52 @@
 #include <OpenCL/OpenCLKernel.hpp> // Hack to make syntax highlighting in Eclipse work
 #endif
 
-//TODO
-__kernel void sobelKernel1(__global const float* d_input, __global float* d_output) {
+int getIndexGlobal(size_t countX, int i, int j) {
+	return j * countX + i;
+}
+// Read value from global array a, return 0 if outside image
+float getValueGlobal(__global const float* a, size_t countX, size_t countY, int i, int j) {
+	if (i < 0 || i >= countX || j < 0 || j >= countY)
+		return 0;
+	else
+		return a[getIndexGlobal(countX, i, j)];
+}
 
-	/*size_t i = get_global_id(0);
-	size_t j = get_global_id(1);
-	size_t countX = get_global_size(0);
-	size_t countY = get_global_size(1);
+__kernel void sobelKernel(__global float* d_input, __global float* d_output) {
 
-	int getIndexGlobal(std::size_t countX, int i, int j) {
-		return j * countX + i;
-	}
-	// Read value from global array a, return 0 if outside image
-	float getValueGlobal(__global const float* a, std::size_t countX, std::size_t countY, int i, int j) {
-		if (i < 0 || (size_t)i >= countX || j < 0 || (size_t)j >= countY)
-			return 0;
-		else
-			return a[getIndexGlobal(countX, i, j)];
-	}
+
+	uint i = get_global_id(0);
+	uint j = get_global_id(1);
+
+	uint countX = get_global_size(0);
+	uint countY = get_global_size(1);
+
 	float Gx = getValueGlobal(d_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(d_input, countX, countY, i - 1, j) + getValueGlobal(d_input, countX, countY, i - 1, j + 1)
 		- getValueGlobal(d_input, countX, countY, i + 1, j - 1) - 2 * getValueGlobal(d_input, countX, countY, i + 1, j) - getValueGlobal(d_input, countX, countY, i + 1, j + 1);
 	float Gy = getValueGlobal(d_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(d_input, countX, countY, i, j - 1) + getValueGlobal(d_input, countX, countY, i + 1, j - 1)
 		- getValueGlobal(d_input, countX, countY, i - 1, j + 1) - 2 * getValueGlobal(d_input, countX, countY, i, j + 1) - getValueGlobal(d_input, countX, countY, i + 1, j + 1);
-	d_output[getIndexGlobal(countX, i, j)] = sqrt(Gx * Gx + Gy * Gy);*/
+	
+	d_output[getIndexGlobal(countX, i, j)] = sqrt(Gx * Gx + Gy * Gy);
+	
+	/*double theta = std::atan2(Gy, Gx);
+
+	theta = theta * (360.0 / (2.0 * M_PI));
+
+	int segment = 0;
+			
+	if ((theta <= 22.5 && theta >= -22.5) || (theta <= -157.5) || (theta >= 157.5)) 
+		segment = 1;  // "-"
+	else if ((theta > 22.5 && theta <= 67.5) || (theta > -157.5 && theta <= -112.5))
+		segment = 2;  // "/" 
+	else if ((theta > 67.5 && theta <= 112.5) || (theta >= -112.5 && theta < -67.5))
+		segment = 3;  // "|"
+	else if ((theta >= -67.5 && theta < -22.5) || (theta > 112.5 && theta < 157.5))
+		segment = 4;  // "\"  
+	else
+		std::cout << "error " << theta << std::endl;
+	
+	d_out_segment[getIndexGlobal(countX, i, j)] = segment;*/
+			
 
 }
 
