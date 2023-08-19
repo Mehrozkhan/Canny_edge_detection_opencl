@@ -162,10 +162,10 @@ void apply_double_threshold(std::vector<float>& h_outputCpu, const std::vector<f
 		for (int j = 0; j < (int)countY; j++) {
 			
 			if (h_input[getIndexGlobal(countX, i, j)] > strong_threshold)
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 1.0;      //absolutely edge
+				h_outputCpu[getIndexGlobal(countX, i, j)] = /*1.0; */ 255;   //absolutely edge
 			else if (h_input[getIndexGlobal(countX, i, j)] > weak_threshold)
 			{
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 0.5;      //potential edge
+				h_outputCpu[getIndexGlobal(countX, i, j)] = /*0.5; */128;   //potential edge
 				
 			}
 			else
@@ -179,7 +179,8 @@ void apply_edge_hysteresis(std::vector<float>& h_outputCpu, const std::vector<fl
 	for (int i = 1; i < countX - 1; i++) {
 		for (int j = 1; j < countY - 1; j++) {
 			//int src_pos = x + (y * countX);
-			if (h_input[ getIndexGlobal(countX, i, j) ] == 0.5) {
+			if (h_input[ getIndexGlobal(countX, i, j) ] ==/* 0.5)*/128 )
+			{
 				if (h_input[getIndexGlobal(countX, i, j) - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + 1] == 255 ||
 					h_input[getIndexGlobal(countX, i, j) - countX] == 255 || h_input[getIndexGlobal(countX, i, j) + countX] == 255 ||
 					h_input[getIndexGlobal(countX, i, j) - countX - 1] == 255 || h_input[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
@@ -230,7 +231,7 @@ int main(int argc, char** argv) {
 	cl::CommandQueue queue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
 	// Load the source code
-	cl::Program program = OpenCL::loadProgramSource(context, "E:/GPU_lab/Exercise_1/Exercise_1/Exercise 1/For Windows/Opencl-Basics-Windows/Opencl-ex1/src/OpenCLExercise3_Sobel_swathi.cl");
+	cl::Program program = OpenCL::loadProgramSource(context, "E:/GPU_lab/Exercise_1/Exercise_1/Exercise 1/For Windows/Opencl-Basics-Windows/Opencl-ex1/src/OpenCLExercise3_Sobel_DobleTh.cl");
 
 	// Compile the source code. This is similar to program.build(devices) but will print more detailed error messages
 	OpenCL::buildProgram(program, devices);
@@ -256,7 +257,7 @@ int main(int argc, char** argv) {
 	std::vector<int> h_out_segmentGpu(count);
 	//std::vector<float> h_outputGpu_NonMaxSupression(count);
 	std::vector<float> h_outputGpuDoublethreshold(count);
-	
+	std::vector<float> h_outputGpu_Hysteresis(count);
 	cl_float low_threshold = 0.58;
 	cl_float high_threshold = 1.48;
 	// Allocate space for input and output data on the device
@@ -265,6 +266,8 @@ int main(int argc, char** argv) {
 	cl::Buffer d_output(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_inputDt(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputDt(context, CL_MEM_READ_WRITE, size);
+	cl::Buffer d_inputHst(context, CL_MEM_READ_WRITE, size);
+	cl::Buffer d_outputHst(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputCpu_Gaussian(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputCpu_Sobel(context, CL_MEM_READ_WRITE, size);
 
@@ -281,6 +284,7 @@ int main(int argc, char** argv) {
 	memset(h_outputGpu.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
 	memset(h_outputGpuDoublethreshold.data(), 255, size);
+	memset(h_outputGpu_Hysteresis.data(), 255, size);
 	//TODO: GPU
 
 	//////// Load input data ////////////////////////////////
@@ -318,6 +322,7 @@ int main(int argc, char** argv) {
 	memset(h_outputGpu.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
 	memset(h_outputGpuDoublethreshold.data(), 255, size);
+	memset(h_outputGpu_Hysteresis.data(), 255, size);
 	//TODO: GPU
 
 	// Copy input data to device
@@ -384,6 +389,33 @@ int main(int argc, char** argv) {
 	cl::Event eventDt3;
 	queue.enqueueReadBuffer(d_outputDt, true, 0, size, h_outputGpuDoublethreshold.data(), NULL, &eventDt3);
 
+
+	cl::Event eventHst1;
+	queue.enqueueWriteBuffer(d_inputHst, true, 0, size, h_outputGpuDoublethreshold.data(), NULL, &eventHst1);
+
+	// Create a kernel object
+	cl::Kernel HysteresisKernel(program, "HysteresisKernel");
+
+
+	// Launch kernel on the device
+	//TODO
+	HysteresisKernel.setArg<cl::Buffer>(0, d_inputHst);
+	HysteresisKernel.setArg<cl::Buffer>(1, d_outputHst);
+	
+	cl::Event eventHst2;
+	queue.enqueueNDRangeKernel(HysteresisKernel,
+		cl::NullRange,
+		cl::NDRange(countX, countY),
+		cl::NDRange(wgSizeX, wgSizeY),
+		NULL,
+		&eventHst2);
+
+	// Copy output data back to host
+	//TODO
+
+	cl::Event eventHst3;
+	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Hysteresis.data(), NULL, &eventHst3);
+	
 	
 	// Print performance data
 	//TODO
@@ -401,6 +433,7 @@ int main(int argc, char** argv) {
 	//////// Store GPU output image ///////////////////////////////////
 	//Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu, countX, countY);
 	Core::writeImagePGM("E:/GPU_lab/project/output_DoubleThresholdGPU.pgm", h_outputGpuDoublethreshold, countX, countY);
+	Core::writeImagePGM("E:/GPU_lab/project/output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);
 	// Check whether results are correct
 	std::size_t errorCount = 0;
 	for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction

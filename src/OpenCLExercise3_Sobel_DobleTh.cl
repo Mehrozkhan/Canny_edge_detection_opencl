@@ -59,16 +59,37 @@ __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d
 	uint countX = get_global_size(0);
 	uint countY = get_global_size(1);
 
-			if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
-				d_outputDt[getIndexGlobal(countX, i, j)] = 1.0;      //absolutely edge
+	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
+		d_outputDt[getIndexGlobal(countX, i, j)] =/* 1.0;*/ 255;      //absolutely edge
 			else if (getValueGlobal(d_inputDt, countX, countY, i, j )> low_threshold)
 			{
-				d_outputDt[getIndexGlobal(countX, i, j)] = 0.5;      //potential edge
+		d_outputDt[getIndexGlobal(countX, i, j)] =/* 0.5;*/ 128;      //potential edge
 
 			}
 			else
 				d_outputDt[getIndexGlobal(countX, i, j)] = 0;       //absolutely not edge
 				
+}
+
+__kernel void HysteresisKernel(__global float* d_inputHst, __global float* d_outputHst)
+{
+
+	uint i = get_global_id(0);
+	uint j = get_global_id(1);
+
+	uint countX = get_global_size(0);
+	uint countY = get_global_size(1);
+
+	if (d_inputHst[getIndexGlobal(countX, i, j)] == /*0.5)*/128) {
+		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 255)
+			d_outputHst[getIndexGlobal(countX, i, j)] = 255;
+		else
+			d_outputHst[getIndexGlobal(countX, i, j)] = 0;
+	}
+
 }
 
 //TODO
