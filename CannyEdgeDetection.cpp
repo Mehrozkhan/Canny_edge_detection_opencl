@@ -16,14 +16,16 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <vector>
 #include <cmath>
 
 #include <boost/lexical_cast.hpp>
 #define M_PI acos(-1.0)
 
-float low_threshold = 0.05;
-float high_threshold = 0.25;
 
+int median = -1;
+float high_threshold = 65 * 1.33;//0.25*255;
+float low_threshold = 65 * 0.66;//0.05*255;
 //////////////////////////////////////////////////////////////////////////////
 // CPU implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -38,9 +40,90 @@ float getValueGlobal(const std::vector<float>& a, std::size_t countX, std::size_
 		return a[getIndexGlobal(countX, i, j)];
 }
 
+#define NUMBER_OF_BINS 256
+
+void calculateHistogram(std::vector<int>& histogram, std::vector<float>& h_input, std::size_t countX, std::size_t countY)
+{
+	for (int i = 0; i < countX; i++)
+	{
+		for (int j = 0; j < countY; j++)
+		{
+			int Pixel_value = h_input[getIndexGlobal(countX, i, j)];
+			//std::cout << Pixel_value << ", ";
+
+			histogram[Pixel_value]++;
+		}
+	}
+
+}
+
+void histogramEqualization(std::vector<float>& h_outputCpu, int median, std::vector<float>& h_input, std::size_t countX, std::size_t countY)
+{
+
+	std::size_t size = h_input.size();
+	std::vector<int> histogram(NUMBER_OF_BINS, 0);
+
+	// Calculate the histogram of the image
+	calculateHistogram(histogram, h_input, countX, countY);
+	for (int i = 1; i < NUMBER_OF_BINS; i++)
+	{
+		std::cout << "histogram["<<i<<"]"<< histogram[i] << ", " << std::endl;
+	}
+	
+	// Assuming histogram is an array representing the histogram
+
+
+			// The median is now stored in the 'median' variable
+
+
+	// Calculate the cumulative distribution function (CDF)
+	std::vector<int> cdf(NUMBER_OF_BINS, 0);
+	cdf[0] = histogram[0];
+	for (int i = 1; i < NUMBER_OF_BINS; i++)
+	{
+		cdf[i] = cdf[i - 1] + histogram[i];
+	}
+
+	// Calculate the equalized image
+	float normalizationFactor = static_cast<float>(NUMBER_OF_BINS - 1);
+	for (int i = 0; i < countX; i++)
+	{
+		for (int j = 0; j < countY; j++)
+		{
+			h_outputCpu[getIndexGlobal(countX, i, j)] = std::round(cdf[h_input[getIndexGlobal(countX, i, j)]] * 255 / (countX * countY));
+			//h_outputCpu[getIndexGlobal(countX, i, j)] = h_outputCpu[getIndexGlobal(countX, i, j)] ;
+			//std::cout << h_outputCpu[getIndexGlobal(countX, i, j)] << ", ";
+		}
+	}
+	calculateHistogram(histogram, h_input, countX, countY);
+	for (int i = 1; i < NUMBER_OF_BINS; i++)
+	{
+		std::cout << "histogram[" << i << "]" << histogram[i] << ", " << std::endl;
+	}
+	int sum = 0;
+	//int median = -1;
+
+	for (int Pixel_value = 0; Pixel_value < 256; Pixel_value++)
+	{
+		sum += histogram[Pixel_value];
+		if (sum >= (countX * countY / 2))
+		{
+			median = Pixel_value;
+			break;
+		}
+
+	}
+	std::cout << median << std::endl;
+
+	// Print the equalized image
+
+
+}
+
 /*1. Gaussian Blur to remove noise */
 void gaussianfilter(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY)
 {
+	
 	float weights[5][5] = {
 		{1,  4,  7,  4, 1},
 		{4, 16, 26, 16, 4},
@@ -138,7 +221,9 @@ void non_max_suppression(std::vector<float>& h_outputCpu, const std::vector<floa
 
 }
 
-void apply_double_threshold(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, float strong_threshold, float weak_threshold, std::size_t countX, std::size_t countY) {
+
+    
+void apply_double_threshold(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, int median, std::size_t countX, std::size_t countY) {
 	
 	
 	/* float sum = 0.0;
@@ -150,26 +235,30 @@ void apply_double_threshold(std::vector<float>& h_outputCpu, const std::vector<f
 
 	float mean = sum / (countX * countY);
 
-	float highThreshold = mean * 2;  // Adjust the multiplier as needed
-	float lowThreshold = mean * 1;   // Adjust the multiplier as needed
-
-	int strong_edge = 255;
-	int weak_edge = 128; */
+	float high_threshold = mean * 1.33;  // Adjust the multiplier as needed
+	float low_threshold = mean * 0.66;   // Adjust the multiplier as needed
+	std::cout << "mean: " << mean << std::endl;
+	std::cout << "high_threshold: " << high_threshold << std::endl;
+	std::cout << "low_threshold " << low_threshold << std::endl;*/
 	
-	for (int i = 0; i < (int)countX; i++) {
-		for (int j = 0; j < (int)countY; j++) {
+	//high_threshold = median * 1.33;//0.25*255;
+	//low_threshold = median * 0.66;//0.05*255;
+	
+	for (int i = 0; i < countX; i++) {
+		for (int j = 0; j < countY; j++) {
 			
-			if (h_input[getIndexGlobal(countX, i, j)] > strong_threshold)
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 1.0;      //absolutely edge
-			else if (h_input[getIndexGlobal(countX, i, j)] > weak_threshold)
+			if (h_input[getIndexGlobal(countX, i, j)] > high_threshold)
+				h_outputCpu[getIndexGlobal(countX, i, j)] = 255;      //absolutely edge
+			else if (h_input[getIndexGlobal(countX, i, j)] > low_threshold)
 			{
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 0.5;      //potential edge
+				h_outputCpu[getIndexGlobal(countX, i, j)] = 127;      //potential edge
 				
 			}
 			else
 				h_outputCpu[getIndexGlobal(countX, i, j)] = 0;       //absolutely not edge
 		}
 	}
+	
 }
 
 void apply_edge_hysteresis(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY) {
@@ -177,17 +266,23 @@ void apply_edge_hysteresis(std::vector<float>& h_outputCpu, const std::vector<fl
 	for (int i = 1; i < countX - 1; i++) {
 		for (int j = 1; j < countY - 1; j++) {
 			//int src_pos = x + (y * countX);
-			if (h_input[ getIndexGlobal(countX, i, j) ] == 0.5) {
-				if (h_input[getIndexGlobal(countX, i, j) - 1] == 1.0 || h_input[getIndexGlobal(countX, i, j) + 1] == 1.0 ||
-					h_input[getIndexGlobal(countX, i, j) - countX] == 1.0 || h_input[getIndexGlobal(countX, i, j) + countX] == 1.0 ||
-					h_input[getIndexGlobal(countX, i, j) - countX - 1] == 1.0 || h_input[getIndexGlobal(countX, i, j) - countX + 1] == 1.0 ||
-					h_input[getIndexGlobal(countX, i, j) + countX - 1] == 1.0 || h_input[getIndexGlobal(countX, i, j) + countX + 1] == 1.0)
-					h_outputCpu[getIndexGlobal(countX, i, j)] = 1.0;
+			if (h_input[ getIndexGlobal(countX, i, j) ] == 127) {
+				if (h_input[getIndexGlobal(countX, i, j) - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + 1] == 255 ||
+					h_input[getIndexGlobal(countX, i, j) - countX] == 255 || h_input[getIndexGlobal(countX, i, j) + countX] == 255 ||
+					h_input[getIndexGlobal(countX, i, j) - countX - 1] == 255 || h_input[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
+					h_input[getIndexGlobal(countX, i, j) + countX - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + countX + 1] == 255)
+					h_outputCpu[getIndexGlobal(countX, i, j)] = 255;
+
 				else
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 			}
 		}
 	}
+	/*for (int i = 0; i < (int)countX; i++) {
+		for (int j = 0; j < (int)countY; j++) {
+			std::cout << h_outputCpu[getIndexGlobal(countX, i, j)] << ", ";
+		}
+	}*/
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -228,7 +323,7 @@ int main(int argc, char** argv) {
 	cl::CommandQueue queue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
 	// Load the source code
-	cl::Program program = OpenCL::loadProgramSource(context, "C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/Exercise 1/For Windows/Opencl-Basics-Windows/Opencl-ex1/src/CannyEdgeDetection.cl");
+	cl::Program program = OpenCL::loadProgramSource(context, "../../../src/CannyEdgeDetection.cl");
 
 	// Compile the source code. This is similar to program.build(devices) but will print more detailed error messages
 	OpenCL::buildProgram(program, devices);
@@ -248,6 +343,10 @@ int main(int argc, char** argv) {
 	std::vector<float> h_outputCpu_Sobel(count);
 	std::vector<int>   h_out_segment(count);
 	std::vector<float> h_outputCpu_NonMaxSupression(count);
+
+	std::vector<float> h_outputCpu_HistogramEqualization(count);
+	//std::vector<int> median;
+
 	std::vector<float> h_outputCpu_DoubleThreshold(count);
 	std::vector<float> h_outputCpu_Hysteresis(count);
 	std::vector<float> h_outputGpu(count);
@@ -266,7 +365,8 @@ int main(int argc, char** argv) {
 	cl::Buffer d_inputHst(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputHst(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_out_segment(context, CL_MEM_READ_WRITE, size);
-
+	
+	
 	// Initialize memory to 0xff (useful for debugging because otherwise GPU memory will contain information from last execution)
 	memset(h_input.data(), 255, size);
 	memset(h_outputCpu_Gaussian.data(), 255, size);
@@ -287,29 +387,46 @@ int main(int argc, char** argv) {
 	{
 		std::vector<float> inputData;
 		std::size_t inputWidth, inputHeight;
-		Core::readImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/Exercise 1/For Windows/Opencl-Basics-Windows/Opencl-ex1/src/Valve.pgm", inputData, inputWidth, inputHeight);
+		Core::readImagePGM("Valve.pgm", inputData, inputWidth, inputHeight);
 		for (size_t j = 0; j < countY; j++) {
 			for (size_t i = 0; i < countX; i++) {
-				h_input[i + countX * j] = inputData[(i % inputWidth) + inputWidth * (j % inputHeight)];
+				
+				h_input[i + countX * j] = inputData[(i % inputWidth) + inputWidth * (j % inputHeight)]; //not normalized
+				
+				if (h_input[i + countX * j] < 0)
+				{
+					h_input[i + countX * j] = 0;
+				}
+				else if (h_input[i + countX * j] > 255)
+				{
+					h_input[i + countX * j] = 255;
+					
+				}
+				
+				
 			}
 		}
+		
 	}
 
 	// Do calculation on the host side
 
 	Core::TimeSpan cpubegin = Core::getCurrentTime();
-	gaussianfilter(h_outputCpu_Gaussian, h_input, countX, countY);
+	histogramEqualization(h_outputCpu_HistogramEqualization, median, h_input, countX, countY);
+	gaussianfilter(h_outputCpu_Gaussian, h_outputCpu_HistogramEqualization, countX, countY);
 	sobelHost(h_outputCpu_Sobel, h_outputCpu_Gaussian, h_out_segment, countX, countY);
 	non_max_suppression( h_outputCpu_NonMaxSupression, h_outputCpu_Sobel,  h_out_segment, countX, countY);
-	apply_double_threshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression, high_threshold, low_threshold, countX, countY);
+	apply_double_threshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression, median, countX, countY);
 	apply_edge_hysteresis(h_outputCpu_Hysteresis, h_outputCpu_DoubleThreshold, countX, countY);
 	Core::TimeSpan cpuend = Core::getCurrentTime();
+	
 	//////// Store CPU output image ///////////////////////////////////
-	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_gaussianfilter_cpu.pgm", h_outputCpu_Gaussian, countX, countY);
-	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_sobel_cpu.pgm", h_outputCpu_Sobel, countX, countY);
-	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_non_max_suppression.pgm", h_outputCpu_NonMaxSupression, countX, countY);
-	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_DoubleThreshold.pgm", h_outputCpu_DoubleThreshold, countX, countY);
-	Core::writeImagePGM("C:/Users/SWATHI/Documents/subject materials/semester 3/GPU lab/output_Hysterisis.pgm", h_outputCpu_Hysteresis, countX, countY);
+	//Core::writeImagePGM("input.pgm", h_input, countX, countY);
+	Core::writeImagePGM("output_gaussianfilter_cpu.pgm", h_outputCpu_Gaussian, countX, countY);
+	Core::writeImagePGM("output_sobel_cpu.pgm", h_outputCpu_Sobel, countX, countY);
+	Core::writeImagePGM("output_non_max_suppression.pgm", h_outputCpu_NonMaxSupression, countX, countY);
+	Core::writeImagePGM("output_DoubleThreshold.pgm", h_outputCpu_DoubleThreshold, countX, countY);
+	Core::writeImagePGM("output_Hysterisis.pgm", h_outputCpu_Hysteresis, countX, countY);
 	std::cout << std::endl;
 
 	// Reinitialize output memory to 0xff
