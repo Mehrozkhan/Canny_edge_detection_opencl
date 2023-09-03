@@ -140,10 +140,10 @@ __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d
 	uint countY = get_global_size(1);
 
 	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
-		d_outputDt[getIndexGlobal(countX, i, j)] = 1.0;     //absolutely edge
+		d_outputDt[getIndexGlobal(countX, i, j)] = 255;     //absolutely edge
 	else if (getValueGlobal(d_inputDt, countX, countY, i, j) > low_threshold)
 	{
-		d_outputDt[getIndexGlobal(countX, i, j)] = 0.5;      //potential edge
+		d_outputDt[getIndexGlobal(countX, i, j)] = 127;      //potential edge
 
 	}
 	else
@@ -162,12 +162,12 @@ __kernel void HysteresisKernel(__global float* d_inputHst, __global float* d_out
 	uint countY = get_global_size(1);
 	d_outputHst[getIndexGlobal(countX, i, j)] = d_inputHst[getIndexGlobal(countX, i, j)];
 
-	if (d_inputHst[getIndexGlobal(countX, i, j)] == 0.5) {
-		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 1.0 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 1.0 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 1.0 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 1.0 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 1.0 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 1.0 ||
-			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 1.0 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 1.0)
-			d_outputHst[getIndexGlobal(countX, i, j)] = 1.0;
+	if (d_inputHst[getIndexGlobal(countX, i, j)] == 127) {
+		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
+			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 255)
+			d_outputHst[getIndexGlobal(countX, i, j)] = 255;
 		else
 			d_outputHst[getIndexGlobal(countX, i, j)] = 0;
 	}
