@@ -128,8 +128,8 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 	default:
 		d_output2[getIndexGlobal(countX, i, j)] = 0;
 		break;
-	}*/
-
+	}
+*/
 __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d_outputDt, float low_threshold, float high_threshold)
 {
 

@@ -420,7 +420,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("Input_images/Lizard.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("Input_images/Valve.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -498,9 +498,6 @@ int main(int argc, char** argv) {
 		}
 	}
 		
-		
-	
-
 	// Do calculation on the host side
 
 	Core::TimeSpan cpubegin = Core::getCurrentTime();
@@ -530,7 +527,7 @@ int main(int argc, char** argv) {
 	//TODO: GPU
 
 	// Copy input data to device
-	//TODO
+	// TODO	
 	cl::Event event1;
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
 
@@ -555,7 +552,7 @@ int main(int argc, char** argv) {
 		&event2);
 
 	// Copy output data back to host
-	//TODO
+	// TODO
 
 	cl::Event event3;
 	queue.enqueueReadBuffer(d_output, true, 0, size, h_outputGpu.data(), NULL, &event3);
