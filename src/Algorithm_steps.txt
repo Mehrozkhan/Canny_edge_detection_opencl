@@ -1,0 +1,6 @@
+Canny Edge Detection Algorithm steps:
+1. Gaussian Filter.
+2. Sobel filter.
+3. non - max  suppression.
+4. Double Threshold application.
+5. Tracking edge by hysteresis.
