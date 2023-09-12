@@ -1,6 +1,7 @@
 #ifndef __OPENCL_VERSION__
 #include <OpenCL/OpenCLKernel.hpp> // Hack to make syntax highlighting in Eclipse work
 #endif
+#define NUMBER_OF_BINS 256
 
 int getIndexGlobal(size_t countX, int i, int j) {
 	return j * countX + i;
@@ -11,6 +12,40 @@ float getValueGlobal(__global const float* a, size_t countX, size_t countY, int 
 		return 0;
 	else
 		return a[getIndexGlobal(countX, i, j)];
+}
+
+__kernel void calculateHistogramKernel(__global float* d_input, __global float* d_output)
+{
+	uint i = get_global_id(0);
+	uint j = get_global_id(1);
+
+	uint countX = get_global_size(0);
+	uint countY = get_global_size(1);
+
+	// Calculate the histogram of the image
+	int Pixel_value = d_input[getIndexGlobal(countX, i, j)];
+	atomic_add(&d_output[Pixel_value],1);
+	
+}
+
+__kernel void histogramEqualizationKernel(__global float* d_input, __global int* d_Cdf, __global float* d_output)
+{
+
+	uint i = get_global_id(0);
+	uint j = get_global_id(1);
+
+	uint countX = get_global_size(0);
+	uint countY = get_global_size(1);
+
+
+	// Calculate the cumulative distribution function (CDF)
+	
+	// Calculate the equalized image
+	float normalizationFactor = (float)(NUMBER_OF_BINS - 1);
+	uint Pixel_value = d_input[getIndexGlobal(countX, i, j)];
+	float x = d_Cdf[Pixel_value] * 255 / (countX * countY);
+	d_output[getIndexGlobal(countX, i, j)] = round(x);
+			
 }
 
 __kernel void gaussianKernel(__global float* d_input, __global float* d_output) {

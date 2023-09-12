@@ -28,6 +28,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+
+
 #define M_PI acos(-1.0)
 #define NUMBER_OF_BINS 256
 
@@ -35,7 +37,7 @@
 * Global variables 
 ***********************************************************************************************************************
 */
-int median = -1;
+//int median = -1;
 float high_threshold = 65 * 1.33;//0.25*255;
 float low_threshold = 65 * 0.66;//0.05*255;
 
@@ -74,24 +76,15 @@ void calculateHistogram(std::vector<int>& histogram, std::vector<float>& h_input
 
 }
 
-void histogramEqualization(std::vector<float>& h_outputCpu, int median, std::vector<float>& h_input, std::size_t countX, std::size_t countY)
+void histogramEqualization(std::vector<float>& h_outputCpu,  std::vector<float>& h_input, std::size_t countX, std::size_t countY)
 {
 
-	std::size_t size = h_input.size();
+	//std::size_t size = h_input.size();
 	std::vector<int> histogram(NUMBER_OF_BINS, 0);
 
 	// Calculate the histogram of the image
 	calculateHistogram(histogram, h_input, countX, countY);
-	for (int i = 0; i < NUMBER_OF_BINS; i++)
-	{
-		std::cout << "histogram["<<i<<"]"<< histogram[i] << ", " << std::endl;
-	}
 	
-	// Assuming histogram is an array representing the histogram
-
-
-			// The median is now stored in the 'median' variable
-
 
 	// Calculate the cumulative distribution function (CDF)
 	std::vector<int> cdf(NUMBER_OF_BINS, 0);
@@ -113,27 +106,7 @@ void histogramEqualization(std::vector<float>& h_outputCpu, int median, std::vec
 		}
 	}
 	calculateHistogram(histogram, h_input, countX, countY);
-	for (int i = 0; i < NUMBER_OF_BINS; i++)
-	{
-		std::cout << "histogram[" << i << "]" << histogram[i] << ", " << std::endl;
-	}
-	int sum = 0;
-	//int median = -1;
-
-	for (int Pixel_value = 0; Pixel_value < 256; Pixel_value++)
-	{
-		sum += histogram[Pixel_value];
-		std::cout << sum << std::endl;
-		if (sum >= (countX * countY / 4))
-		{
-			median = Pixel_value;
-			break;
-		}
-		
-	}
-	std::cout << median << std::endl;
-
-	// Print the equalized image
+	
 
 
 }
@@ -288,7 +261,7 @@ void nonMaxSuppression(std::vector<float>& h_outputCpu, const std::vector<float>
 *  void
 ********************************************************************************************************************************
 */
-void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, int median, std::size_t countX, std::size_t countY) {
+void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<float>& h_input,  std::size_t countX, std::size_t countY) {
 	
 	
 	float sum = 0.0;
@@ -420,7 +393,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("Input_images/Valve.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Valve.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -434,13 +407,17 @@ int main(int argc, char** argv) {
 
 	// Allocate space for output data from CPU and GPU on the host
 	std::vector<float> h_input (count);
+	
 	std::vector<float> h_outputCpu_Gaussian (count);
 	std::vector<float> h_outputCpu_Sobel(count);
 	std::vector<int>   h_out_segment(count);
 	std::vector<float> h_outputCpu_NonMaxSupression(count);
 
 	std::vector<float> h_outputCpu_HistogramEqualization(count);
-	//std::vector<int> median;
+	std::vector<float> h_outputGpu_HistogramEqualization(count);
+
+	std::vector<int> h_outputGpu_HistogramCalculation(NUMBER_OF_BINS);
+	std::vector<int> cdf(NUMBER_OF_BINS);
 
 	std::vector<float> h_outputCpu_DoubleThreshold(count);
 	std::vector<float> h_outputCpu_Hysteresis(count);
@@ -453,6 +430,9 @@ int main(int argc, char** argv) {
 	//TODO
 	cl::Buffer d_input(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_output(context, CL_MEM_READ_WRITE, size);
+	cl::Buffer d_output_HistogramCalculation(context, CL_MEM_READ_WRITE, NUMBER_OF_BINS* sizeof(int));
+	cl::Buffer d_input_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
+	cl::Buffer d_output_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputCpu_Gaussian(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputCpu_Sobel(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_inputDt(context, CL_MEM_READ_WRITE, size);
@@ -464,6 +444,7 @@ int main(int argc, char** argv) {
 	
 	// Initialize memory to 0xff (useful for debugging because otherwise GPU memory will contain information from last execution)
 	memset(h_input.data(), 255, size);
+	
 	memset(h_outputCpu_Gaussian.data(), 255, size);
 	memset(h_outputCpu_Sobel.data(), 255, size);
 	memset(h_out_segment.data(), 255, size);
@@ -471,9 +452,14 @@ int main(int argc, char** argv) {
 	memset(h_outputCpu_DoubleThreshold.data(), 255, size);
 	memset(h_outputCpu_Hysteresis.data(), 255, size);
 	memset(h_outputGpu.data(), 255, size);
+	memset(h_outputGpu_HistogramCalculation.data(), 255, NUMBER_OF_BINS * sizeof(int));
+	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
+	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
 	memset(h_outputGpuDoublethreshold.data(), 255, size);
 	memset(h_outputGpu_Hysteresis.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
+
+	
 	//TODO: GPU
 
 	//////// Load input data ////////////////////////////////
@@ -501,12 +487,12 @@ int main(int argc, char** argv) {
 	// Do calculation on the host side
 
 	Core::TimeSpan cpubegin = Core::getCurrentTime();
-	histogramEqualization(h_outputCpu_HistogramEqualization, median, h_input, countX, countY);
+	histogramEqualization(h_outputCpu_HistogramEqualization, h_input, countX, countY);
 	gaussianFilter(h_outputCpu_Gaussian, h_outputCpu_HistogramEqualization, countX, countY);
 	//gaussianFilter(h_outputCpu_Gaussian, h_input, countX, countY);
 	sobelEdgeDetector(h_outputCpu_Sobel, h_outputCpu_Gaussian, h_out_segment, countX, countY);
 	nonMaxSuppression( h_outputCpu_NonMaxSupression, h_outputCpu_Sobel,  h_out_segment, countX, countY);
-	applyDoubleThreshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression, median, countX, countY);
+	applyDoubleThreshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression,  countX, countY);
 	applyEdgeHysteresis(h_outputCpu_Hysteresis, h_outputCpu_DoubleThreshold, countX, countY);
 	Core::TimeSpan cpuend = Core::getCurrentTime();
 	
@@ -521,6 +507,8 @@ int main(int argc, char** argv) {
 
 	// Reinitialize output memory to 0xff
 	memset(h_outputGpu.data(), 255, size);
+	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
+	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
 	memset(h_outputGpuDoublethreshold.data(), 255, size);
 	memset(h_outputGpu_Hysteresis.data(), 255, size);
@@ -528,6 +516,50 @@ int main(int argc, char** argv) {
 
 	// Copy input data to device
 	// TODO	
+
+	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
+	cl::Kernel calculateHistogramKernel(program, "calculateHistogramKernel");
+	calculateHistogramKernel.setArg<cl::Buffer>(0, d_input);
+	calculateHistogramKernel.setArg<cl::Buffer>(1, d_output_HistogramCalculation);
+
+	queue.enqueueNDRangeKernel(calculateHistogramKernel,
+		cl::NullRange,
+		cl::NDRange(countX, countY),
+		cl::NDRange(wgSizeX, wgSizeY),
+		NULL,
+		NULL);
+
+	queue.enqueueReadBuffer(d_output_HistogramCalculation, true, 0, NUMBER_OF_BINS * sizeof(int), h_outputGpu_HistogramCalculation.data(), NULL, NULL);
+
+	cdf[0] = h_outputGpu_HistogramCalculation[0];
+	for (int i = 1; i < NUMBER_OF_BINS; i++)
+	{
+		cdf[i] = cdf[i - 1] + h_outputGpu_HistogramCalculation[i];
+		std::cout << h_outputGpu_HistogramCalculation[i] << ",";
+	}
+
+	/* Histogram Equalization */
+	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
+	queue.enqueueWriteBuffer(d_output_HistogramCalculation, true, 0, NUMBER_OF_BINS * sizeof(int), cdf.data(), NULL, NULL);
+	cl::Kernel histogramEqualizationKernel(program, "histogramEqualizationKernel");
+	histogramEqualizationKernel.setArg<cl::Buffer>(0, d_input);
+	histogramEqualizationKernel.setArg<cl::Buffer>(1, d_output_HistogramCalculation);
+	histogramEqualizationKernel.setArg<cl::Buffer>(2, d_output_HistogramEqualization);
+	
+	
+	queue.enqueueNDRangeKernel(histogramEqualizationKernel,
+		cl::NullRange,
+		cl::NDRange(countX, countY),
+		cl::NDRange(wgSizeX, wgSizeY),
+		NULL,
+		NULL);
+
+	queue.enqueueReadBuffer(d_output_HistogramEqualization, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, NULL);
+
+	
+	
+
+	
 	cl::Event event1;
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
 
@@ -615,9 +647,9 @@ int main(int argc, char** argv) {
 		for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
 			size_t index = i + j * countX;
 			// Allow small differences between CPU and GPU results (due to different rounding behavior)
-			if (!(std::abs(h_outputCpu_Hysteresis[index] - h_outputGpu_Hysteresis[index]) <= 1e-5)) {
+			if (!(std::abs(h_outputGpu_HistogramEqualization[index] - h_outputCpu_HistogramEqualization[index]) <= 1e-5)) {
 				if (errorCount < 15)
-					std::cout << "Result for " << i << "," << j << " is incorrect: GPU value is " << h_outputGpu_Hysteresis[index] << ", CPU value is " << h_outputCpu_Hysteresis[index] << std::endl;
+					std::cout << "Result for " << i << "," << j << " is incorrect: GPU value is " << h_outputGpu_HistogramEqualization[index] << ", CPU value is " << h_outputCpu_HistogramEqualization[index] << std::endl;
 				else if (errorCount == 15)
 					std::cout << "..." << std::endl;
 				errorCount++;
