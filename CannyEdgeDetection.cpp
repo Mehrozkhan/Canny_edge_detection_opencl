@@ -556,10 +556,6 @@ int main(int argc, char** argv) {
 
 	queue.enqueueReadBuffer(d_output_HistogramEqualization, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, NULL);
 
-	
-	
-
-	
 	cl::Event event1;
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_outputCpu_Gaussian.data(), NULL, &event1);
 
