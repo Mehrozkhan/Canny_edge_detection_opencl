@@ -37,7 +37,7 @@
 * Global variables 
 ***********************************************************************************************************************
 */
-//int median = -1;
+
 float high_threshold = 65 * 1.33;//0.25*255;
 float low_threshold = 65 * 0.66;//0.05*255;
 
@@ -245,7 +245,6 @@ void nonMaxSuppression(std::vector<float>& h_outputCpu, const std::vector<float>
 		
 	}
 	
-
 }
 
 /******************************************************************************************************************************
@@ -273,14 +272,7 @@ void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<flo
 
 	float mean = sum / (countX * countY);
 
-	/*high_threshold = mean * 1.33;  // Adjust the multiplier as needed
-	low_threshold = mean * 0.66;   // Adjust the multiplier as needed
-	std::cout << "mean: " << mean << std::endl;
-	std::cout << "high_threshold: " << high_threshold << std::endl;
-	std::cout << "low_threshold " << low_threshold << std::endl;
-	
-	high_threshold = median * 1.33;//0.25*255;
-	low_threshold = median * 0.66;//0.05*255;*/
+
 	std::cout << "high_threshold: " << high_threshold << std::endl;
 	std::cout << "low_threshold " << low_threshold << std::endl;
 	
@@ -317,7 +309,6 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 	memcpy(h_outputCpu.data(), h_input.data(), countX * countY * sizeof(float));
 	for (int i = 1; i < countX - 1; i++) {
 		for (int j = 1; j < countY - 1; j++) {
-			//int src_pos = x + (y * countX);
 			if (h_input[ getIndexGlobal(countX, i, j) ] == 127) {
 				if (h_input[getIndexGlobal(countX, i, j) - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + 1] == 255 ||
 					h_input[getIndexGlobal(countX, i, j) - countX] == 255 || h_input[getIndexGlobal(countX, i, j) + countX] == 255 ||
@@ -330,12 +321,37 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 			}
 		}
 	}
-	/*for (int i = 0; i < (int)countX; i++) {
-		for (int j = 0; j < (int)countY; j++) {
-			std::cout << h_outputCpu[getIndexGlobal(countX, i, j)] << ", ";
-		}
-	}*/
+
 }
+
+void detectEdgesUsingCanny_CPU(std::vector<float>& h_outputCannyCpu, const std::vector<float>& h_inputHistEq, std::size_t countX, std::size_t countY,
+							   std::size_t count, std::size_t size)
+{
+	// Allocate space for output data from CPU and GPU on the host
+	std::vector<float> h_outputCpu_Gaussian(count);
+	std::vector<float> h_outputCpu_Sobel(count);
+	std::vector<int>   h_out_segment(count);
+	std::vector<float> h_outputCpu_NonMaxSupression(count);
+	std::vector<float> h_outputCpu_DoubleThreshold(count);
+	
+
+	// Initialize memory to 0xff (useful for debugging because otherwise GPU memory will contain information from last execution)
+	memset(h_outputCpu_Gaussian.data(), 255, size);
+	memset(h_outputCpu_Sobel.data(), 255, size);
+	memset(h_out_segment.data(), 255, size);
+	memset(h_outputCpu_NonMaxSupression.data(), 255, size);
+	memset(h_outputCpu_DoubleThreshold.data(), 255, size);
+	
+	
+	gaussianFilter(h_outputCpu_Gaussian, h_inputHistEq, countX, countY);
+	sobelEdgeDetector(h_outputCpu_Sobel, h_outputCpu_Gaussian, h_out_segment, countX, countY);
+	nonMaxSuppression(h_outputCpu_NonMaxSupression, h_outputCpu_Sobel, h_out_segment, countX, countY);
+	applyDoubleThreshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression, countX, countY);
+	applyEdgeHysteresis(h_outputCannyCpu, h_outputCpu_DoubleThreshold, countX, countY);
+}
+
+
+
 
 /******************************************************************************************************************************
 * Function name: main
@@ -400,36 +416,27 @@ int main(int argc, char** argv) {
 	std::size_t wgSizeY = 16;
 	std::size_t countX = wgSizeX * (inputWidth/16); // Overall number of work items in X direction = Number of elements in X direction
 	std::size_t countY = wgSizeY * (inputHeight/16);
-	//countX *= 3; countY *= 3;
 	std::size_t count = countX * countY; // Overall number of elements
 	std::size_t size = count * sizeof (float); // Size of data in bytes
 
 
 	// Allocate space for output data from CPU and GPU on the host
 	std::vector<float> h_input (count);
+	std::vector<float> h_outputCpu_HistogramEqualization(count);	
+	std::vector<float> h_outputCpu_Canny(count);
+
 	
-	std::vector<float> h_outputCpu_Gaussian (count);
-	std::vector<float> h_outputCpu_Sobel(count);
-	std::vector<int>   h_out_segment(count);
-	std::vector<float> h_outputCpu_NonMaxSupression(count);
-
-	std::vector<float> h_outputCpu_HistogramEqualization(count);
 	std::vector<float> h_outputGpu_HistogramEqualization(count);
-
 	std::vector<int> h_outputGpu_HistogramCalculation(NUMBER_OF_BINS);
 	std::vector<int> cdf(NUMBER_OF_BINS);
-
-	std::vector<float> h_outputCpu_DoubleThreshold(count);
-	std::vector<float> h_outputCpu_Hysteresis(count);
 	std::vector<float> h_outputGpu(count);
 	std::vector<int> h_out_segmentGpu(count);
-	std::vector<float> h_outputGpuDoublethreshold(count);
+	std::vector<float> h_outputGpu_Doublethreshold(count);
 	std::vector<float> h_outputGpu_Hysteresis(count);
 
 	// Allocate space for input and output data on the device
 	//TODO
 	cl::Buffer d_input(context, CL_MEM_READ_WRITE, size);
-	cl::Buffer d_output(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_output_HistogramCalculation(context, CL_MEM_READ_WRITE, NUMBER_OF_BINS* sizeof(int));
 	cl::Buffer d_input_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_output_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
@@ -445,17 +452,13 @@ int main(int argc, char** argv) {
 	// Initialize memory to 0xff (useful for debugging because otherwise GPU memory will contain information from last execution)
 	memset(h_input.data(), 255, size);
 	
-	memset(h_outputCpu_Gaussian.data(), 255, size);
-	memset(h_outputCpu_Sobel.data(), 255, size);
-	memset(h_out_segment.data(), 255, size);
-	memset(h_outputCpu_NonMaxSupression.data(), 255, size);
-	memset(h_outputCpu_DoubleThreshold.data(), 255, size);
-	memset(h_outputCpu_Hysteresis.data(), 255, size);
 	memset(h_outputGpu.data(), 255, size);
+
 	memset(h_outputGpu_HistogramCalculation.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
-	memset(h_outputGpuDoublethreshold.data(), 255, size);
+	memset(h_outputCpu_Canny.data(), 255, size);
+	memset(h_outputGpu_Doublethreshold.data(), 255, size);
 	memset(h_outputGpu_Hysteresis.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
 
@@ -479,44 +482,31 @@ int main(int argc, char** argv) {
 				h_input[i + countX * j] = 255;
 
 			}
-
-
 		}
 	}
 		
 	// Do calculation on the host side
-
-	Core::TimeSpan cpubegin = Core::getCurrentTime();
 	histogramEqualization(h_outputCpu_HistogramEqualization, h_input, countX, countY);
-	gaussianFilter(h_outputCpu_Gaussian, h_outputCpu_HistogramEqualization, countX, countY);
-	//gaussianFilter(h_outputCpu_Gaussian, h_input, countX, countY);
-	sobelEdgeDetector(h_outputCpu_Sobel, h_outputCpu_Gaussian, h_out_segment, countX, countY);
-	nonMaxSuppression( h_outputCpu_NonMaxSupression, h_outputCpu_Sobel,  h_out_segment, countX, countY);
-	applyDoubleThreshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression,  countX, countY);
-	applyEdgeHysteresis(h_outputCpu_Hysteresis, h_outputCpu_DoubleThreshold, countX, countY);
+	Core::TimeSpan cpubegin = Core::getCurrentTime();
+	detectEdgesUsingCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
 	Core::TimeSpan cpuend = Core::getCurrentTime();
 	
-	//////// Store CPU output image ///////////////////////////////////
-	//Core::writeImagePGM("input.pgm", h_input, countX, countY);
-	Core::writeImagePGM("output_gaussianfilter_cpu.pgm", h_outputCpu_Gaussian, countX, countY);
-	Core::writeImagePGM("output_sobel_cpu.pgm", h_outputCpu_Sobel, countX, countY);
-	Core::writeImagePGM("output_non_max_suppression.pgm", h_outputCpu_NonMaxSupression, countX, countY);
-	Core::writeImagePGM("output_DoubleThreshold.pgm", h_outputCpu_DoubleThreshold, countX, countY);
-	Core::writeImagePGM("output_Hysterisis.pgm", h_outputCpu_Hysteresis, countX, countY);
-	std::cout << std::endl;
+	
+	Core::writeImagePGM("Canny_Cpu_Output.pgm", h_outputCpu_Canny, countX, countY);
+	
 
 	// Reinitialize output memory to 0xff
 	memset(h_outputGpu.data(), 255, size);
 	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
-	memset(h_outputGpuDoublethreshold.data(), 255, size);
+	memset(h_outputGpu_Doublethreshold.data(), 255, size);
 	memset(h_outputGpu_Hysteresis.data(), 255, size);
 	//TODO: GPU
 
 	// Copy input data to device
 	// TODO	
-
+/*
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
 	cl::Kernel calculateHistogramKernel(program, "calculateHistogramKernel");
 	calculateHistogramKernel.setArg<cl::Buffer>(0, d_input);
@@ -537,9 +527,9 @@ int main(int argc, char** argv) {
 		cdf[i] = cdf[i - 1] + h_outputGpu_HistogramCalculation[i];
 		std::cout << h_outputGpu_HistogramCalculation[i] << ",";
 	}
-
+*/
 	/* Histogram Equalization */
-	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
+	/*queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
 	queue.enqueueWriteBuffer(d_output_HistogramCalculation, true, 0, NUMBER_OF_BINS * sizeof(int), cdf.data(), NULL, NULL);
 	cl::Kernel histogramEqualizationKernel(program, "histogramEqualizationKernel");
 	histogramEqualizationKernel.setArg<cl::Buffer>(0, d_input);
@@ -549,6 +539,7 @@ int main(int argc, char** argv) {
 	
 	queue.enqueueNDRangeKernel(histogramEqualizationKernel,
 		cl::NullRange,
+
 		cl::NDRange(countX, countY),
 		cl::NDRange(wgSizeX, wgSizeY),
 		NULL,
@@ -587,7 +578,7 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &event3);
 	
 	cl::Event eventDt1;
-	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,/*h_outputGpu_NonMaxSupression.data()*/h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
+	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
 	// Launch kernel on the device
@@ -620,6 +611,9 @@ int main(int argc, char** argv) {
 	//TODO
 	cl::Event eventHst3;
 	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Hysteresis.data(), NULL, &eventHst3);
+	
+	*/
+	
 	// Print performance data
 	//TODO
 	/*std::cout << "performance data for implementation :" << std::endl;
@@ -635,7 +629,7 @@ int main(int argc, char** argv) {
 	*/
 	//////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu, countX, countY);
-	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpuDoublethreshold, countX, countY);
+	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpu_Doublethreshold, countX, countY);
 	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);
 	// Check whether results are correct
 	std::size_t errorCount = 0;
