@@ -79,7 +79,7 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output, __g
 
 }
 
-/*
+
 __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global float* d_output2, __global const int* d_in_segment1) {
 
 	uint i = get_global_id(0);
@@ -94,32 +94,32 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 
 	switch (segment) {
 	case 1:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
+		leftPixel = d_input2[getIndexGlobal(countX, i, j) - 1];
+		rightPixel = d_input2[getIndexGlobal(countX, i, j) + 1];
 		if (leftPixel >= currentPixel || rightPixel > currentPixel)
 			d_output2[getIndexGlobal(countX, i, j)] = 0;
 		else
 			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
 		break;
 	case 2:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
+		leftPixel = d_input2[getIndexGlobal(countX, i, j) - (countX - 1)]; 
+		rightPixel = d_input2[getIndexGlobal(countX, i, j) + (countX - 1)];
 		if (leftPixel >= currentPixel || rightPixel > currentPixel)
 			d_output2[getIndexGlobal(countX, i, j)] = 0;
 		else
 			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
 		break;
 	case 3:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
+		upperPixel = d_input2[getIndexGlobal(countX, i, j) - (countX)];
+		lowerPixel = d_input2[getIndexGlobal(countX, i, j) + (countX)];
 		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
 			d_output2[getIndexGlobal(countX, i, j)] = 0;
 		else
 			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
 		break;
 	case 4:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
+		upperPixel = d_input2[getIndexGlobal(countX, i, j) - (countX + 1)];
+		lowerPixel = d_input2[getIndexGlobal(countX, i, j) + (countX + 1)];
 		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
 			d_output2[getIndexGlobal(countX, i, j)] = 0;
 		else
@@ -129,7 +129,7 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 		d_output2[getIndexGlobal(countX, i, j)] = 0;
 		break;
 	}
-*/
+
 __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d_outputDt, float low_threshold, float high_threshold)
 {
 
