@@ -356,7 +356,7 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 
 }
 
-void applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY,
+std::vector<float> applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY,
 							   std::size_t count, std::size_t size)
 {
 	// Allocate space for output data from CPU and GPU on the host
@@ -399,6 +399,7 @@ void applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h
 	cpuendDoublethreshold = Core::getCurrentTime();
 	applyEdgeHysteresis(h_outputCpu, h_outputCpu_DoubleThreshold, countX, countY);
 	cpuendHysteresis = Core::getCurrentTime();
+	return h_outputCpu_NonMaxSupression; //to be deleted at the end.
 }
 
 void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
@@ -426,10 +427,11 @@ void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::strin
 	str << " " << std::setw(13) << (cputime.getSeconds() / gputime1.getSeconds());
 	str << " " << std::setw(12) << (cputime.getSeconds() / totalgputime.getSeconds());
 	std::cout << str.str() << std::endl;
-	/*std::cout << "cpu time for " << f << " = " << cputime.toString() << std::endl;
-	std::cout << "GPU time before copying output data: " << gputime1.toString() << " speedup before copy for " <<f<< " = " << (cputime.getSeconds() / gputime1.getSeconds()) << std::endl;
-	std::cout << "GPU time after copying output data: " << totalgputime.toString() << " speedup after copy for " << f << " = " << (cputime.getSeconds() / totalgputime.getSeconds()) << std::endl;*/
-
+}
+void gputime(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
+{
+	//cl::Event* event4 = nullptr;
+	gputime(event2, event3, nullptr, f, cputime);
 }
 
 
@@ -507,7 +509,6 @@ int main(int argc, char** argv) {
 	std::vector<float> h_input (count);
 	std::vector<float> h_outputCpu_HistogramEqualization(count);	
 	std::vector<float> h_outputCpu_Canny(count);
-
 
 	std::vector<int> h_outputGpu_HistogramCalculation(NUMBER_OF_BINS);
 	std::vector<int> cdf(NUMBER_OF_BINS);
@@ -597,7 +598,7 @@ int main(int argc, char** argv) {
 	// Do calculation on the host side
 	histogramEqualization(h_outputCpu_HistogramEqualization, h_input, countX, countY);
 	Core::TimeSpan cpubegin = Core::getCurrentTime();
-	applyCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
+	std::vector<float> h_outputCpu_NonMaxSupression = applyCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
 	Core::TimeSpan cpuend = Core::getCurrentTime();
 	
 	
@@ -664,22 +665,24 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_output_HistogramEqualization, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, NULL);
 
 	//Gaussian
-
-	/*queue.enqueueWriteBuffer(d_inputGpu_Gaussian, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, NULL);
+	cl::Event eventG1;
+	queue.enqueueWriteBuffer(d_inputGpu_Gaussian, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, &eventG1);
 
 	cl::Kernel gaussianKernel(program, "gaussianKernel");
 	gaussianKernel.setArg<cl::Buffer>(0, d_inputGpu_Gaussian);
 	gaussianKernel.setArg<cl::Buffer>(1, d_outputGpu_Gaussian);
 
+	cl::Event eventG2;
 	queue.enqueueNDRangeKernel(gaussianKernel,
 		cl::NullRange,
 		cl::NDRange(countX, countY),
 		cl::NDRange(wgSizeX, wgSizeY),
 		NULL,
-		NULL);
+		&eventG2);
 
-	queue.enqueueReadBuffer(d_outputGpu_Gaussian, true, 0, size, h_outputGpu_Gaussian.data(), NULL, NULL);
-	*/
+	cl::Event eventG3;
+	queue.enqueueReadBuffer(d_outputGpu_Gaussian, true, 0, size, h_outputGpu_Gaussian.data(), NULL, &eventG3);
+	
 	//Sobel GPU
 
 	cl::Event eventS1;
@@ -743,9 +746,9 @@ int main(int argc, char** argv) {
 
 
 	//double threshold
-	/*
+	
 	cl::Event eventDt1;
-	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
+	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,/*h_outputGpu_NonMaxSupression.data()*/ h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
 	// Launch kernel on the device
@@ -761,10 +764,10 @@ int main(int argc, char** argv) {
 	// Copy output data back to host
 	//TODO
 	cl::Event eventDt3;
-	queue.enqueueReadBuffer(d_outputDt, true, 0, size, h_outputGpuDoublethreshold.data(), NULL, &eventDt3);
+	queue.enqueueReadBuffer(d_outputDt, true, 0, size, h_outputGpu_Doublethreshold.data(), NULL, &eventDt3);
 
 	cl::Event eventHst1;
-	queue.enqueueWriteBuffer(d_inputHst, true, 0, size, h_outputGpuDoublethreshold.data(), NULL, &eventHst1);
+	queue.enqueueWriteBuffer(d_inputHst, true, 0, size, h_outputGpu_Doublethreshold.data(), NULL, &eventHst1);
 	// Create a kernel object
 	cl::Kernel HysteresisKernel(program, "HysteresisKernel");
 	// Launch kernel on the device
@@ -778,7 +781,7 @@ int main(int argc, char** argv) {
 	//TODO
 	cl::Event eventHst3;
 	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Hysteresis.data(), NULL, &eventHst3);
-	*/
+	
 	std::cout << "performance data for implementation :" << std::endl;
 	Core::TimeSpan cputimeGaussian = cpuendGaussian - cpubeginGaussian;
 	Core::TimeSpan cputimeSobel = cpuendSobel - cpubeginsobel;
@@ -795,9 +798,11 @@ int main(int argc, char** argv) {
 	str1 << " " << std::setw(9) << "speedup w/o MC";
 	str1 << " " << std::setw(9) << "speedup MC";
 	std::cout << str1.str() << std::endl;
+	gputime(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
+	//gputime(&eventNM2, &eventNM3, "Nonmax", cputimeNonmaxsupression);
 	gputime(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
-	//gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
-	//gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
+	gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
+	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
 
 	//////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu_Sobel, countX, countY);
