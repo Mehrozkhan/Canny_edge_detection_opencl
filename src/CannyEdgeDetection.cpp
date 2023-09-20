@@ -399,6 +399,11 @@ std::vector<float> applyCanny_CPU(std::vector<float>& h_outputCpu, const std::ve
 	cpuendDoublethreshold = Core::getCurrentTime();
 	applyEdgeHysteresis(h_outputCpu, h_outputCpu_DoubleThreshold, countX, countY);
 	cpuendHysteresis = Core::getCurrentTime();
+	
+	Core::writeImagePGM("Gaussian_Cpu_Output.pgm", h_outputCpu_Gaussian, countX, countY);
+	Core::writeImagePGM("Sobel_Cpu_Output.pgm", h_outputCpu_Sobel, countX, countY);
+	Core::writeImagePGM("NonMaxSupression_Cpu_Output.pgm", h_outputCpu_NonMaxSupression, countX, countY);
+	Core::writeImagePGM("DoubleThreshold_Cpu_Output.pgm", h_outputCpu_DoubleThreshold, countX, countY);
 	return h_outputCpu_NonMaxSupression; //to be deleted at the end.
 }
 
@@ -494,7 +499,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("../../../src/InputImages/Valve.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Bikesgray.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -715,10 +720,11 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &eventS4);
 	
 	//NonMaxSuppression GPU----------------------------------------------------------------------------------
-
 /*
-	queue.enqueueWriteBuffer(d_inputGpu_NonMaxSupression, true, 0, size, h_outputGpu_Sobel.data(), NULL, NULL);
-	queue.enqueueWriteBuffer(d_in_segment, true, 0, size, h_out_segmentGpu.data(), NULL, NULL);
+	cl::Event eventNM1;
+	queue.enqueueWriteBuffer(d_inputGpu_NonMaxSupression, true, 0, size, h_outputGpu_Sobel.data(), NULL, &eventNM1);
+	cl::Event eventNM2;
+	queue.enqueueWriteBuffer(d_in_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &eventNM2);
 	// Create a kernel object
 	cl::Kernel nonMaxSuppressionKernel(program, "nonMaxSuppressionKernel");
 
@@ -728,27 +734,27 @@ int main(int argc, char** argv) {
 	nonMaxSuppressionKernel.setArg<cl::Buffer>(1, d_outputGpu_NonMaxSupression);
 	nonMaxSuppressionKernel.setArg<cl::Buffer>(2, d_in_segment);
 
-	
+	cl::Event eventNM3;
 	queue.enqueueNDRangeKernel(nonMaxSuppressionKernel,
 		cl::NullRange,
 		cl::NDRange(countX, countY),
 		cl::NDRange(wgSizeX, wgSizeY),
 		NULL,
-		&event2);
+		&eventNM3);
 
 	// Copy output data back to host
 
-
-	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, NULL);
+	cl::Event eventNM4;
+	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
-
 	*/
+	
 
 
 	//double threshold
 	
 	cl::Event eventDt1;
-	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,/*h_outputGpu_NonMaxSupression.data()*/ h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
+	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,h_outputGpu_NonMaxSupression.data() /*h_outputCpu_NonMaxSupression.data()*/, NULL, &eventDt1);
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
 	// Launch kernel on the device
@@ -799,7 +805,7 @@ int main(int argc, char** argv) {
 	str1 << " " << std::setw(9) << "speedup MC";
 	std::cout << str1.str() << std::endl;
 	gputime(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
-	//gputime(&eventNM2, &eventNM3, "Nonmax", cputimeNonmaxsupression);
+	//gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
 	gputime(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
 	gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
 	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
