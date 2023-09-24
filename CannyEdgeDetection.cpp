@@ -407,8 +407,8 @@ int main(int argc, char** argv) {
 	cl::Event eventNM4;
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
-	*/
 	
+	*/
 
 
 	//double threshold
@@ -470,14 +470,14 @@ int main(int argc, char** argv) {
         /////////// Calculating performance parameters for different functionalities/////////////////////
 	gputime(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
 	gputime(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
-	gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
+	//gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
 	gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
 	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
 	
         //////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("output_gaussian_gpu.pgm", h_outputGpu_Gaussian, countX, countY);
 	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu_Sobel, countX, countY);
-	Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
+	//Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
 	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpu_Doublethreshold, countX, countY);
 	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);	// Check whether results are correct
 	std::size_t errorCount = 0;
