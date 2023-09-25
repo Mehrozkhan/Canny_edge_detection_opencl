@@ -414,7 +414,7 @@ int main(int argc, char** argv) {
 	//double threshold
 	
 	cl::Event eventDt1;
-	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,/*h_outputGpu_NonMaxSupression.data()*/h_outputCpu_NonMaxSupression.data(), NULL, &eventDt1);
+	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,h_outputGpu_NonMaxSupression.data()/*h_outputCpu_NonMaxSupression.data()*/, NULL, &eventDt1);
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
 	// Launch kernel on the device
