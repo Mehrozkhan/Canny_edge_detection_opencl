@@ -114,8 +114,8 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output, __g
 
 }
 
-/*
-__kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global float* d_output2, __global const int* d_in_segment1) {
+
+__kernel void nonMaxSuppressionKernel(__global float* d_input, __global float* d_output, __global int* d_in_segment) {
 
 	uint i = get_global_id(0);
 	uint j = get_global_id(1);
@@ -123,48 +123,42 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 	uint countX = get_global_size(0);
 	uint countY = get_global_size(1);
 
-	int segment = d_in_segment1[getIndexGlobal(countX, i, j)];
-	float currentPixel = d_input2[getIndexGlobal(countX, i, j)];
-	float leftPixel, rightPixel, upperPixel, lowerPixel;
+	switch (d_in_segment[getIndexGlobal(countX, i, j)]) {
 
-	switch (segment) {
-	case 1:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
-		if (leftPixel >= currentPixel || rightPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 2:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
-		if (leftPixel >= currentPixel || rightPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 3:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
-		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 4:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
-		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	default:
-		d_output2[getIndexGlobal(countX, i, j)] = 0;
-		break;
+		case 1: // Horizontal "-"
+			// Check if the current pixel's magnitude is greater than its neighbors in the horizontal direction
+			if (getValueGlobal(d_input, countX, countY, i - 1, j) >= d_input[getIndexGlobal(countX, i, j)] || getValueGlobal(d_input, countX, countY, i + 1, j) > d_input[getIndexGlobal(countX, i, j)])
+				d_output[getIndexGlobal(countX, i, j)] = 0;
+			else 
+				d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+			break;
+		
+		case 2: // Diagonal "/"
+				// Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
+				if (getValueGlobal(d_input, countX, countY, i + 1, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i - 1, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else 
+					d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		case 3: // Vertical "|"
+                                // Check if the current pixel's magnitude is greater than its neighbors in the vertical direction
+				if (getValueGlobal(d_input, countX, countY, i, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		case 4: // Diagonal "\"
+							// Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
+				if (getValueGlobal(d_input, countX, countY, i - 1, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i + 1, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		default:
+			d_output[getIndexGlobal(countX, i, j)] = 0;
+			break;
 	}
-*/
+	
+}
+
 /******************************************************************************************************************************
 *OpenCL Kernel : DoubleThresholdKernel
 *Applying double threshold to tne output of non-max suppression

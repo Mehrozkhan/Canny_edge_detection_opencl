@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("../../../src/InputImages/Lizard.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Bikesgray.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -380,7 +380,7 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &eventS4);
 	
 	//NonMaxSuppression GPU----------------------------------------------------------------------------------
-/*
+
 	cl::Event eventNM1;
 	queue.enqueueWriteBuffer(d_inputGpu_NonMaxSupression, true, 0, size, h_outputGpu_Sobel.data(), NULL, &eventNM1);
 	cl::Event eventNM2;
@@ -408,7 +408,7 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
 	
-	*/
+	
 
 
 	//double threshold
@@ -477,7 +477,7 @@ int main(int argc, char** argv) {
         //////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("output_gaussian_gpu.pgm", h_outputGpu_Gaussian, countX, countY);
 	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu_Sobel, countX, countY);
-	//Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
+	Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
 	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpu_Doublethreshold, countX, countY);
 	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);	// Check whether results are correct
 	std::size_t errorCount = 0;
