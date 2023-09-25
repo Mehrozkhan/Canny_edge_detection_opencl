@@ -44,7 +44,7 @@ __kernel void histogramEqualizationKernel(__global float* d_input, __global int*
 	float normalizationFactor = (float)(NUMBER_OF_BINS - 1);
 	uint Pixel_value = d_input[getIndexGlobal(countX, i, j)];
 	float x = d_Cdf[Pixel_value] * 255 / (countX * countY);
-	d_output[getIndexGlobal(countX, i, j)] = round(x);
+	d_output[getIndexGlobal(countX, i, j)] = round(x)/255;
 			
 }
 
@@ -187,11 +187,11 @@ __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d
 
         //Checking for strong edge pixel
    	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
-		d_outputDt[getIndexGlobal(countX, i, j)] = 255;
+		d_outputDt[getIndexGlobal(countX, i, j)] = 1;
         // Checking for weak edge pixel
 	else if (getValueGlobal(d_inputDt, countX, countY, i, j) > low_threshold)
 	{
-		d_outputDt[getIndexGlobal(countX, i, j)] = 127;
+		d_outputDt[getIndexGlobal(countX, i, j)] = 0.5;
 
 	}
         // Suppress edges with gradient less than low threshold
@@ -224,13 +224,13 @@ __kernel void HysteresisKernel(__global float* d_inputHst, __global float* d_out
 	d_outputHst[getIndexGlobal(countX, i, j)] = d_inputHst[getIndexGlobal(countX, i, j)];
 
         // Check if current pixel is weak edge pixel
-	if (d_inputHst[getIndexGlobal(countX, i, j)] == 127) {
+	if (d_inputHst[getIndexGlobal(countX, i, j)] == 0.5) {
                 // Check if the neighboring pixels are strong edge pixels
-		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 255)
-			d_outputHst[getIndexGlobal(countX, i, j)] = 255; // set current ouput pixel as an edge
+		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 1)
+			d_outputHst[getIndexGlobal(countX, i, j)] = 1; // set current ouput pixel as an edge
 		else
 			d_outputHst[getIndexGlobal(countX, i, j)] = 0;   // set current ouput pixel to not an edge
 	}
