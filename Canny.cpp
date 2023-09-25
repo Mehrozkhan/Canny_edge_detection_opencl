@@ -41,10 +41,33 @@ Core::TimeSpan cpuendHysteresis = Core::TimeSpan::fromSeconds(0);
 * CPU Implementation
 ***********************************************************************************************************************
 */
+
+/*
+* Function name: getIndexGlobal
+* Calculate the global index from 2D coordinates (i, j) in a 2D image array
+* Parameters:
+*   countX - Width of the image in pixel
+*   i - X-coordinate
+*   j - Y-coordinate
+* Return:
+*   The global index corresponding to the (i, j) coordinates
+*/
 int getIndexGlobal(std::size_t countX, int i, int j) {
 	return j * countX + i;
 }
-/* Read value from global array a, return 0 if outside image*/
+
+/* 
+* Function name: getValueGlobal
+* Read a value from a global array 'a' with bounds checking, return 0 if outside image boundaries
+* Parameters:
+*   a - Input array
+*   countX - Width of the image in pixels
+*   countY - Height of the image in pixels
+*   i - X-coordinate
+*   j - Y-coordinate
+* Return:
+*   The value at the specified (i, j) coordinates if within bounds, otherwise returns 0.
+*/
 float getValueGlobal(const std::vector<float>& a, std::size_t countX, std::size_t countY, int i, int j) {
 	if (i < 0 || (size_t)i >= countX || j < 0 || (size_t)j >= countY)
 		return 0;
@@ -135,26 +158,29 @@ void histogramEqualization(std::vector<float>& h_outputCpu, std::vector<float>& 
 * Function name: gaussianFilter
 *  Applying gaussian blur to remove noise
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  countX -
-*  countY -
+*   h_outputCpu - Output buffer for the blurred image
+*   h_input - Input buffer containing the original image
+*   countX - Width of the image in pixels
+*   countY - Height of the image in pixels
 * Return:
 *  void
 ********************************************************************************************************************************
 */
 void gaussianFilter(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY)
 {
+        // Gaussian kernel weights
 	float weights[5][5] = {
 		{1,  4,  7,  4, 1},
 		{4, 16, 26, 16, 4},
 		{7, 26, 41, 26, 7},
 		{4, 16, 26, 16, 4},
 		{1,  4,  7,  4, 1} };
+        // Loop through the input image pixels, excluding a 2-pixel border
 	for (int y = 2; y < countY - 2; y++)
 	{
 		for (int x = 2; x < countX - 2; x++)
 		{
+                        // Convolving the input image with the Gaussian kernel
 			float sum = 0.0;
 			for (int j = -2; j <= 2; j++)
 			{
@@ -163,6 +189,7 @@ void gaussianFilter(std::vector<float>& h_outputCpu, const std::vector<float>& h
 					sum += weights[j + 2][i + 2] * h_input[(y + j) * countX + (x + i)];
 				}
 			}
+                        // Normalize by the sum of the kernel elements
 			h_outputCpu[y * countX + x] = sum / 273; // Normalize by the sum of the kernel elements
 		}
 	}
@@ -170,28 +197,32 @@ void gaussianFilter(std::vector<float>& h_outputCpu, const std::vector<float>& h
 
 /******************************************************************************************************************************
 * Function name: sobelEdgeDetector
-*  Edge detection using sobel filter
+* Applying the Sobel edge detection filter to the input image and determining edge segment orientations.
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  h_out_segment-
-*  countX -
-*  countY -
+*   h_outputCpu - Output buffer for the edge-detected image
+*   h_input - Input buffer containing the original image
+*   h_out_segment - Output buffer for the detected edge segment orientations
+*   countX - Width of the image in pixels
+*   countY - Height of the image in pixels
 * Return:
-*  void
+*   void
 ********************************************************************************************************************************
 */
 void sobelEdgeDetector(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::vector<int>& h_out_segment, std::size_t countX, std::size_t countY)
 {
+        // Loop through each pixel in the image
 	for (int i = 0; i < (int)countX; i++) {
 		for (int j = 0; j < (int)countY; j++) {
+                        // Calculate gradient components using the Sobel operator
 			float Gx = getValueGlobal(h_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(h_input, countX, countY, i - 1, j) + getValueGlobal(h_input, countX, countY, i - 1, j + 1)
 				- getValueGlobal(h_input, countX, countY, i + 1, j - 1) - 2 * getValueGlobal(h_input, countX, countY, i + 1, j) - getValueGlobal(h_input, countX, countY, i + 1, j + 1);
 			float Gy = getValueGlobal(h_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(h_input, countX, countY, i, j - 1) + getValueGlobal(h_input, countX, countY, i + 1, j - 1)
 				- getValueGlobal(h_input, countX, countY, i - 1, j + 1) - 2 * getValueGlobal(h_input, countX, countY, i, j + 1) - getValueGlobal(h_input, countX, countY, i + 1, j + 1);
-
+                        
+                        // Calculate the gradient magnitude and store it in the output buffer
 			h_outputCpu[getIndexGlobal(countX, i, j)] = sqrt(Gx * Gx + Gy * Gy);
-
+                        
+                        // Calculate the orientation angle of the gradient and determine the edge segment
 			double theta = std::atan2(Gy, Gx);
 
 			theta = theta * (360.0 / (2.0 * M_PI));
@@ -209,53 +240,60 @@ void sobelEdgeDetector(std::vector<float>& h_outputCpu, const std::vector<float>
 					segment = 4;  // "\"  
 				else
 					segment = 0;
-
+                 
+                                // Store the detected segment in the output buffer
 				h_out_segment[getIndexGlobal(countX, i, j)] = segment;
 			}
 		}
 	}
 }
-/*3. Non Max Supression */
 /******************************************************************************************************************************
-* Function name: nonMaxSuppressio
-*
+* Function name: nonMaxSuppression
+* Apply non-maximum suppression to the input gradient magnitude image based on gradient orientations.
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  h_in_segment-
-*  countX -
-*  countY -
+*   h_outputCpu - Output buffer for the non-maximum suppressed image
+*   h_input - Input buffer containing the gradient magnitude image
+*   h_in_segment - Input buffer containing the detected edge segment orientations
+*   countX - Width of the image in pixels
+*   countY - Height of the image in pixels
 * Return:
-*  void
+*   void
 ********************************************************************************************************************************
 */
 void nonMaxSuppression(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::vector<int>& h_in_segment, std::size_t countX, std::size_t countY)
 {
+        // Loop through each pixel in the image
 	for (int i = 0; i < (int)countX; i++) {
 		for (int j = 0; j < (int)countY; j++)
 		{
+                        // Determine the edge segment orientation for the current pixel
 			switch (h_in_segment[getIndexGlobal(countX, i, j)]) {
-			case 1:
+			case 1: // Horizontal "-"
+				// Check if the current pixel's magnitude is greater than its neighbors in the horizontal direction
 				if (h_input[getIndexGlobal(countX, i, j) - 1] >= h_input[getIndexGlobal(countX, i, j)] || h_input[getIndexGlobal(countX, i, j) + 1] > h_input[getIndexGlobal(countX, i, j)])
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				else h_outputCpu[getIndexGlobal(countX, i, j)] = h_input[getIndexGlobal(countX, i, j)];
 				break;
-			case 2:
+			case 2: // Diagonal "/"
+				// Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
 				if (h_input[getIndexGlobal(countX, i, j) - (countX - 1)] >= h_input[getIndexGlobal(countX, i, j)] || h_input[getIndexGlobal(countX, i, j) + (countX - 1)] > h_input[getIndexGlobal(countX, i, j)])
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				else h_outputCpu[getIndexGlobal(countX, i, j)] = h_input[getIndexGlobal(countX, i, j)];
 				break;
-			case 3:
+			case 3: // Vertical "|"
+                                // Check if the current pixel's magnitude is greater than its neighbors in the vertical direction
 				if (h_input[getIndexGlobal(countX, i, j) - (countX)] >= h_input[getIndexGlobal(countX, i, j)] || h_input[getIndexGlobal(countX, i, j) + (countX)] > h_input[getIndexGlobal(countX, i, j)])
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				else h_outputCpu[getIndexGlobal(countX, i, j)] = h_input[getIndexGlobal(countX, i, j)];
 				break;
-			case 4:
+			case 4: // Diagonal "\"
+                                // Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
 				if (h_input[getIndexGlobal(countX, i, j) - (countX + 1)] >= h_input[getIndexGlobal(countX, i, j)] || h_input[getIndexGlobal(countX, i, j) + (countX + 1)] > h_input[getIndexGlobal(countX, i, j)])
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				else h_outputCpu[getIndexGlobal(countX, i, j)] = h_input[getIndexGlobal(countX, i, j)];
 				break;
-			default:
+			default: // Undefined segment
+				// Suppress the pixel
 				h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				break;
 			}

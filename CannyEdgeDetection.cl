@@ -165,46 +165,74 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 		break;
 	}
 */
+/******************************************************************************************************************************
+*OpenCL Kernel : DoubleThresholdKernel
+*Applying double threshold to tne output of non-max suppression
+*Parameters :
+* d_inputDt : Input buffer containing the gradient magnitude image (points to global memory)
+* d_outputDt : Output buffer for the double - thresholded image (points to global memory)
+* low_threshold : Lower threshold value for edge detection
+* high_threshold : Higher threshold value for edge detection
+******************************************************************************************************************************
+*/
+
 __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d_outputDt, float low_threshold, float high_threshold)
 {
 
-	uint i = get_global_id(0);
-	uint j = get_global_id(1);
+	uint i = get_global_id(0); // global index of current pixel in X direction
+	uint j = get_global_id(1); // global index of current pixel in Y direction
 
-	uint countX = get_global_size(0);
-	uint countY = get_global_size(1);
+	uint countX = get_global_size(0); //global size in X direction
+	uint countY = get_global_size(1); //global size in Y direction
 
-	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
-		d_outputDt[getIndexGlobal(countX, i, j)] = 255;     //absolutely edge
+        //Checking for strong edge pixel
+   	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
+		d_outputDt[getIndexGlobal(countX, i, j)] = 255;
+        // Checking for weak edge pixel
 	else if (getValueGlobal(d_inputDt, countX, countY, i, j) > low_threshold)
 	{
-		d_outputDt[getIndexGlobal(countX, i, j)] = 127;      //potential edge
+		d_outputDt[getIndexGlobal(countX, i, j)] = 127;
 
 	}
+        // Suppress edges with gradient less than low threshold
 	else
-		d_outputDt[getIndexGlobal(countX, i, j)] = 0;       //absolutely not edge
+		d_outputDt[getIndexGlobal(countX, i, j)] = 0;
 
 }
 
+/******************************************************************************************************************************
+*OpenCL Kernel : HysteresisKernel
+*Applying hysteresis to tne output of double threshold
+*Parameters :
+* d_inputHst - Input buffer containing double thresholded image (points to global memory)
+* d_outputHst - Output buffer for the result of hysteresis thresholding (points to global memory)
+******************************************************************************************************************************
+*/
 __kernel void HysteresisKernel(__global float* d_inputHst, __global float* d_outputHst)
 {
 	
 
-	uint i = get_global_id(0);
-	uint j = get_global_id(1);
+	uint i = get_global_id(0); // global index of current pixel in X direction
+	uint j = get_global_id(1); // global index of current pixel in Y direction
 
-	uint countX = get_global_size(0);
-	uint countY = get_global_size(1);
+
+	uint countX = get_global_size(0); //global size in X direction
+	uint countY = get_global_size(1); //global size in Y direction
+
+
+	// Initialize the output pixel value to the same as the input.
 	d_outputHst[getIndexGlobal(countX, i, j)] = d_inputHst[getIndexGlobal(countX, i, j)];
 
+        // Check if current pixel is weak edge pixel
 	if (d_inputHst[getIndexGlobal(countX, i, j)] == 127) {
+                // Check if the neighboring pixels are strong edge pixels
 		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 255 ||
 			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 255 ||
 			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
 			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 255)
-			d_outputHst[getIndexGlobal(countX, i, j)] = 255;
+			d_outputHst[getIndexGlobal(countX, i, j)] = 255; // set current ouput pixel as an edge
 		else
-			d_outputHst[getIndexGlobal(countX, i, j)] = 0;
+			d_outputHst[getIndexGlobal(countX, i, j)] = 0;   // set current ouput pixel to not an edge
 	}
 
 }

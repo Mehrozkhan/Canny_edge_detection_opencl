@@ -44,10 +44,22 @@
 * Function definitions
 ***********************************************************************************************************************
 */
+
+/**
+ * Function name: gputime
+ * Measure and print performance data for different functionalities.
+ * Parameters:
+ *  event2 - Event corresponding to the kernal launch of a GPU functionality
+ *  event3 - Event corresponding to the memory copy of output1 back to host
+ *  event4 - Event corresponding to the memory copy of output2 back to host
+ *  f - A string describing the functionality being measured.
+ *  cputime - CPU time for the functionality.
+ */
+
 void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
 {
-	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(*event2);
-	Core::TimeSpan gputime2 = Core::TimeSpan::fromSeconds(0);
+	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(*event2); //gputime before memory copy
+	Core::TimeSpan gputime2 = Core::TimeSpan::fromSeconds(0);  //gputime after memory copy
 
 	if (event4 != nullptr)
 	{
@@ -59,7 +71,9 @@ void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::strin
 		gputime2 = OpenCL::getElapsedTime(*event3);
 		//std::cout << " check2: " << gputime2.toString() << std::endl;
 	}
-	Core::TimeSpan totalgputime = gputime1 + gputime2;
+	Core::TimeSpan totalgputime = gputime1 + gputime2; //total gpu time
+
+        //String stream to format and print the performance data
 	std::stringstream str;
 	str << std::setiosflags(std::ios::left) << std::setw(20) << f;
 	str << std::setiosflags(std::ios::right);
@@ -70,9 +84,20 @@ void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::strin
 	str << " " << std::setw(12) << (cputime.getSeconds() / totalgputime.getSeconds());
 	std::cout << str.str() << std::endl;
 }
+
+/**
+ * Overloaded function to measure and print performance data for different functionalities with only single output copy back.
+ * Parameters:
+ *  event2 - Event corresponding to the kernal launch of a GPU functionality
+ *  event3 - Event corresponding to the memory copy of output1 back to host
+ *  event4 - Event corresponding to the memory copy of output2 back to host
+ *  f - A string describing the functionality being measured.
+ *  cputime - CPU time for the functionality.
+ */
 void gputime(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
 {
 	//cl::Event* event4 = nullptr;
+        // Call the main gputime function with event4 set to nullptr.
 	gputime(event2, event3, nullptr, f, cputime);
 }
 
@@ -382,8 +407,8 @@ int main(int argc, char** argv) {
 	cl::Event eventNM4;
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
-	*/
 	
+	*/
 
 
 	//double threshold
@@ -423,13 +448,15 @@ int main(int argc, char** argv) {
 	cl::Event eventHst3;
 	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Hysteresis.data(), NULL, &eventHst3);
 	
-	std::cout << "performance data for implementation :" << std::endl;
+	/////////// Calculating cpu time for different functionalities///////////////////////////////
 	Core::TimeSpan cputimeGaussian = cpuendGaussian - cpubeginGaussian;
 	Core::TimeSpan cputimeSobel = cpuendSobel - cpubeginsobel;
 	Core::TimeSpan cputimeNonmaxsupression = cpuendNonmaxsuppression - cpuendSobel;
 	Core::TimeSpan cputimeDoublethreshold = cpuendDoublethreshold - cpuendNonmaxsuppression;
 	Core::TimeSpan cputimeHysteresis = cpuendHysteresis - cpuendDoublethreshold;
-	//std::cout << "cpu time: " << cputime.toString() << std::endl;
+	std::cout << "performance data for implementation :" << std::endl;
+       
+        /////////// String stream for performance headers///////////////////////////////
 	std::stringstream str1;
 	str1 << std::setiosflags(std::ios::left) << std::setw(20) << "Functionality";
 	str1 << std::setiosflags(std::ios::right);
@@ -439,17 +466,20 @@ int main(int argc, char** argv) {
 	str1 << " " << std::setw(9) << "speedup w/o MC";
 	str1 << " " << std::setw(9) << "speedup MC";
 	std::cout << str1.str() << std::endl;
+
+        /////////// Calculating performance parameters for different functionalities/////////////////////
 	gputime(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
-	//gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
 	gputime(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
+	//gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
 	gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
 	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
-
-	//////// Store GPU output image ///////////////////////////////////
+	
+        //////// Store GPU output image ///////////////////////////////////
+	Core::writeImagePGM("output_gaussian_gpu.pgm", h_outputGpu_Gaussian, countX, countY);
 	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu_Sobel, countX, countY);
+	//Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
 	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpu_Doublethreshold, countX, countY);
-	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);
-	// Check whether results are correct
+	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);	// Check whether results are correct
 	std::size_t errorCount = 0;
 	for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction
 		for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
