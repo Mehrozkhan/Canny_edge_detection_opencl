@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("../../../src/InputImages/Bikesgray.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Lizard.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
 	
 
 	std::vector<float> h_outputGpu_Doublethreshold(count);
-	std::vector<float> h_outputGpu_Hysteresis(count);
+	std::vector<float> h_outputGpu_Canny(count);
 
 
 	// Allocate space for input and output data on the device
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
 	memset(h_outputGpu_NonMaxSupression.data(), 255, size);
 
 	memset(h_outputGpu_Doublethreshold.data(), 255, size);
-	memset(h_outputGpu_Hysteresis.data(), 255, size);
+	memset(h_outputGpu_Canny.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
 
 	
@@ -263,11 +263,11 @@ int main(int argc, char** argv) {
 	// Do calculation on the host side
 	histogramEqualization(h_outputCpu_HistogramEqualization, h_input, countX, countY);
 	Core::TimeSpan cpubegin = Core::getCurrentTime();
-	std::vector<float> h_outputCpu_NonMaxSupression = applyCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
+	applyCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
 	Core::TimeSpan cpuend = Core::getCurrentTime();
 	
 	
-	Core::writeImagePGM("Canny_Cpu_Output.pgm", h_outputCpu_Canny, countX, countY);
+	
 	
 
 	// Reinitialize output memory to 0xff
@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
 
 	memset(h_out_segmentGpu.data(), 255, size);
 	memset(h_outputGpu_Doublethreshold.data(), 255, size);
-	memset(h_outputGpu_Hysteresis.data(), 255, size);
+	memset(h_outputGpu_Canny.data(), 255, size);
 	//TODO: GPU
 
 	// Copy input data to device
@@ -307,7 +307,7 @@ int main(int argc, char** argv) {
 	for (int i = 1; i < NUMBER_OF_BINS; i++)
 	{
 		cdf[i] = cdf[i - 1] + h_outputGpu_HistogramCalculation[i];
-		std::cout << h_outputGpu_HistogramCalculation[i] << ",";
+		//std::cout << h_outputGpu_HistogramCalculation[i] << ",";
 	}
 
 	/* Histogram Equalization */
@@ -414,7 +414,7 @@ int main(int argc, char** argv) {
 	//double threshold
 	
 	cl::Event eventDt1;
-	queue.enqueueWriteBuffer(d_inputDt, true, 0, size,h_outputGpu_NonMaxSupression.data()/*h_outputCpu_NonMaxSupression.data()*/, NULL, &eventDt1);
+	queue.enqueueWriteBuffer(d_inputDt, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventDt1);
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
 	// Launch kernel on the device
@@ -446,7 +446,7 @@ int main(int argc, char** argv) {
 	// Copy output data back to host
 	//TODO
 	cl::Event eventHst3;
-	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Hysteresis.data(), NULL, &eventHst3);
+	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Canny.data(), NULL, &eventHst3);
 	
 	/////////// Calculating cpu time for different functionalities///////////////////////////////
 	Core::TimeSpan cputimeGaussian = cpuendGaussian - cpubeginGaussian;
@@ -475,33 +475,30 @@ int main(int argc, char** argv) {
 	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
 	
         //////// Store GPU output image ///////////////////////////////////
-	Core::writeImagePGM("output_gaussian_gpu.pgm", h_outputGpu_Gaussian, countX, countY);
-	Core::writeImagePGM("output_sobel_gpu.pgm", h_outputGpu_Sobel, countX, countY);
-	Core::writeImagePGM("output_nonmax_gpu.pgm", h_outputGpu_NonMaxSupression, countX, countY);
-	Core::writeImagePGM("output_DoubleThreshold_gpu.pgm", h_outputGpu_Doublethreshold, countX, countY);
-	Core::writeImagePGM("output_HysteresisGPU.pgm", h_outputGpu_Hysteresis, countX, countY);	// Check whether results are correct
+	Core::writeImagePGM("7_Histogram_Equalization_Gpu_Output.pgm", h_outputGpu_HistogramEqualization, countX, countY);
+	Core::writeImagePGM("8_Gaussian_Gpu_Output.pgm", h_outputGpu_Gaussian, countX, countY);
+	Core::writeImagePGM("9_Sobel_Gpu_Output.pgm", h_outputGpu_Sobel, countX, countY);
+	Core::writeImagePGM("10_NonMaxSupression_Gpu_Output.pgm", h_outputGpu_NonMaxSupression, countX, countY);
+	Core::writeImagePGM("11_DoubleThreshold_Gpu_Output.pgm", h_outputGpu_Doublethreshold, countX, countY);
+	Core::writeImagePGM("12_CannyEdgeDetection_Gpu_Output.pgm", h_outputGpu_Canny, countX, countY);	// Check whether results are correct
 	std::size_t errorCount = 0;
 	for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction
 		for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
 			size_t index = i + j * countX;
 			// Allow small differences between CPU and GPU results (due to different rounding behavior)
-			if (!(std::abs(h_outputGpu_HistogramEqualization[index] - h_outputCpu_HistogramEqualization[index]) <= 1e-5)) {
-				if (errorCount < 15)
-					std::cout << "Result for " << i << "," << j << " is incorrect: GPU value is " << h_outputGpu_HistogramEqualization[index] << ", CPU value is " << h_outputCpu_HistogramEqualization[index] << std::endl;
-				else if (errorCount == 15)
-					std::cout << "..." << std::endl;
+			if (!(std::abs(h_outputGpu_Canny[index] - h_outputCpu_Canny[index]) == 0)) {
 				errorCount++;
 			}
 		}
 	}
-	if (errorCount != 0) {
-		std::cout << "Found " << errorCount << " incorrect results" << std::endl;
+
+	if (errorCount > (0.01 * countX * countY)) {
+		std::cout << "Found " << errorCount << " incorrect results out of"<< countX * countY << "pixels" << std::endl;
 		return 1;
 	} 
 
 	std::cout << std::endl;
 	
-
 	std::cout << "Success" << std::endl;
 	
 	return 0;

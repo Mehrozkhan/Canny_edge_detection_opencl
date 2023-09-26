@@ -383,7 +383,7 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 
 
 
-std::vector<float> applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY,
+void applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY,
 	std::size_t count, std::size_t size)
 {
 	// Allocate space for output data from CPU and GPU on the host
@@ -428,11 +428,12 @@ std::vector<float> applyCanny_CPU(std::vector<float>& h_outputCpu, const std::ve
 	cpuendHysteresis = Core::getCurrentTime();
 
 	
-	Core::writeImagePGM("Histogram equalization_Cpu_Output.pgm", h_input, countX, countY);
-	Core::writeImagePGM("Gaussian_Cpu_Output.pgm", h_outputCpu_Gaussian, countX, countY);
-	Core::writeImagePGM("Sobel_Cpu_Output.pgm", h_outputCpu_Sobel, countX, countY);
-	Core::writeImagePGM("NonMaxSupression_Cpu_Output.pgm", h_outputCpu_NonMaxSupression, countX, countY);
-	Core::writeImagePGM("DoubleThreshold_Cpu_Output.pgm", h_outputCpu_DoubleThreshold, countX, countY);
-	return h_outputCpu_NonMaxSupression; //to be deleted at the end.
+	Core::writeImagePGM("1_Histogram_Equalization_Cpu_Output.pgm", h_input, countX, countY);
+	Core::writeImagePGM("2_Gaussian_Cpu_Output.pgm", h_outputCpu_Gaussian, countX, countY);
+	Core::writeImagePGM("3_Sobel_Cpu_Output.pgm", h_outputCpu_Sobel, countX, countY);
+	Core::writeImagePGM("4_NonMaxSupression_Cpu_Output.pgm", h_outputCpu_NonMaxSupression, countX, countY);
+	Core::writeImagePGM("5_DoubleThreshold_Cpu_Output.pgm", h_outputCpu_DoubleThreshold, countX, countY);
+	Core::writeImagePGM("6_CannyEdgeDetection_Cpu_Output.pgm", h_outputCpu, countX, countY);
+	
 }
 
