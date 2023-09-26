@@ -46,7 +46,7 @@
 */
 
 /**
- * Function name: gputime
+ * Function name: Performance
  * Measure and print performance data for different functionalities.
  * Parameters:
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
@@ -56,7 +56,7 @@
  *  cputime - CPU time for the functionality.
  */
 
-void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
+void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
 {
 	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(*event2); //gputime before memory copy
 	Core::TimeSpan gputime2 = Core::TimeSpan::fromSeconds(0);  //gputime after memory copy
@@ -94,11 +94,11 @@ void gputime(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::strin
  *  f - A string describing the functionality being measured.
  *  cputime - CPU time for the functionality.
  */
-void gputime(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
+void Performance(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
 {
 	//cl::Event* event4 = nullptr;
         // Call the main gputime function with event4 set to nullptr.
-	gputime(event2, event3, nullptr, f, cputime);
+	Performance(event2, event3, nullptr, f, cputime);
 }
 
 
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 		}
 	}
 	cl_context_properties prop[4] = { CL_CONTEXT_PLATFORM, (cl_context_properties) platforms[platformId] (), 0, 0 };
-	std::cout << "Using platform '" << platforms[platformId].getInfo<CL_PLATFORM_NAME>() << "' from '" << platforms[platformId].getInfo<CL_PLATFORM_VENDOR>() << "'" << std::endl;
+	
 	cl::Context context(CL_DEVICE_TYPE_GPU, prop);
 
 
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
 	// Use an image (Valve.pgm) as input data
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("../../../src/InputImages/Lizard.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Bikesgray.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -408,7 +408,7 @@ int main(int argc, char** argv) {
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
 	
-	
+	*/
 
 
 	//double threshold
@@ -454,6 +454,7 @@ int main(int argc, char** argv) {
 	Core::TimeSpan cputimeNonmaxsupression = cpuendNonmaxsuppression - cpuendSobel;
 	Core::TimeSpan cputimeDoublethreshold = cpuendDoublethreshold - cpuendNonmaxsuppression;
 	Core::TimeSpan cputimeHysteresis = cpuendHysteresis - cpuendDoublethreshold;
+	std::cout << std::endl << "Using platform '" << platforms[platformId].getInfo<CL_PLATFORM_NAME>() << "' from '" << platforms[platformId].getInfo<CL_PLATFORM_VENDOR>() << "'" << std::endl;
 	std::cout << "performance data for implementation :" << std::endl;
        
         /////////// String stream for performance headers///////////////////////////////
@@ -468,11 +469,11 @@ int main(int argc, char** argv) {
 	std::cout << str1.str() << std::endl;
 
         /////////// Calculating performance parameters for different functionalities/////////////////////
-	gputime(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
-	gputime(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
-	//gputime(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
-	gputime(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
-	gputime(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
+	Performance(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
+	Performance(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
+	Performance(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
+	Performance(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
+	Performance(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
 	
         //////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("7_Histogram_Equalization_Gpu_Output.pgm", h_outputGpu_HistogramEqualization, countX, countY);
