@@ -1,3 +1,9 @@
+/**********************************************************************************************************************
+* File name: Canny.cpp
+* This file consists of the function implementations.
+* 
+***********************************************************************************************************************
+*/
 #include <stdio.h>
 
 #include <Core/Assert.hpp>
@@ -38,11 +44,11 @@ Core::TimeSpan cpuendDoublethreshold = Core::TimeSpan::fromSeconds(0);
 Core::TimeSpan cpuendHysteresis = Core::TimeSpan::fromSeconds(0);
 
 /**********************************************************************************************************************
-* CPU Implementation
+* Function definitions (CPU Implementation)
 ***********************************************************************************************************************
 */
 
-/*
+/**********************************************************************************************************************
 * Function name: getIndexGlobal
 * Calculate the global index from 2D coordinates (i, j) in a 2D image array
 * Parameters:
@@ -51,12 +57,13 @@ Core::TimeSpan cpuendHysteresis = Core::TimeSpan::fromSeconds(0);
 *   j - Y-coordinate
 * Return:
 *   The global index corresponding to the (i, j) coordinates
+***********************************************************************************************************************
 */
 int getIndexGlobal(std::size_t countX, int i, int j) {
 	return j * countX + i;
 }
 
-/* 
+/*********************************************************************************************************************** 
 * Function name: getValueGlobal
 * Read a value from a global array 'a' with bounds checking, return 0 if outside image boundaries
 * Parameters:
@@ -67,6 +74,7 @@ int getIndexGlobal(std::size_t countX, int i, int j) {
 *   j - Y-coordinate
 * Return:
 *   The value at the specified (i, j) coordinates if within bounds, otherwise returns 0.
+***********************************************************************************************************************
 */
 float getValueGlobal(const std::vector<float>& a, std::size_t countX, std::size_t countY, int i, int j) {
 	if (i < 0 || (size_t)i >= countX || j < 0 || (size_t)j >= countY)
@@ -75,19 +83,15 @@ float getValueGlobal(const std::vector<float>& a, std::size_t countX, std::size_
 		return a[getIndexGlobal(countX, i, j)];
 }
 
-/**********************************************************************************************************************
-* Function definitions
-***********************************************************************************************************************
-*/
-
 /******************************************************************************************************************************
 * Function name: calculateHistogram
-*
+*  This function calculates the histogram representation of the image. The intensity value for each pixel ranges from 0 - 255.
+*  A histogram has 256 bins and it represents the number of pixels having the corresponding intensity value.
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  countX -
-*  countY -
+*  h_outputCpu - Calculated histogram of the image
+*  h_input - Input image
+*  countX - Width of the image in pixels
+*  countY - Height of the image in pixels
 * Return:
 *  void
 ********************************************************************************************************************************
@@ -109,12 +113,12 @@ void calculateHistogram(std::vector<int>& histogram, std::vector<float>& h_input
 
 /******************************************************************************************************************************
 * Function name: histogramEqualization
-*
+* Distribute the intensities throughout the image.
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  countX -
-*  countY -
+*  h_outputCpu - Histogram equalized output image
+*  h_input - Original Grayscale Input image
+*  countX - Width of the image in pixels
+*  countY - Height of the image in pixels
 * Return:
 *  void
 ********************************************************************************************************************************
@@ -159,7 +163,7 @@ void histogramEqualization(std::vector<float>& h_outputCpu, std::vector<float>& 
 *  Applying gaussian blur to remove noise
 * Parameters:
 *   h_outputCpu - Output buffer for the blurred image
-*   h_input - Input buffer containing the original image
+*   h_input - Input buffer containing the histogram equalized image
 *   countX - Width of the image in pixels
 *   countY - Height of the image in pixels
 * Return:
@@ -200,7 +204,7 @@ void gaussianFilter(std::vector<float>& h_outputCpu, const std::vector<float>& h
 * Applying the Sobel edge detection filter to the input image and determining edge segment orientations.
 * Parameters:
 *   h_outputCpu - Output buffer for the edge-detected image
-*   h_input - Input buffer containing the original image
+*   h_input - Input buffer containing the gaussian blurred image
 *   h_out_segment - Output buffer for the detected edge segment orientations
 *   countX - Width of the image in pixels
 *   countY - Height of the image in pixels
@@ -213,16 +217,16 @@ void sobelEdgeDetector(std::vector<float>& h_outputCpu, const std::vector<float>
         // Loop through each pixel in the image
 	for (int i = 0; i < (int)countX; i++) {
 		for (int j = 0; j < (int)countY; j++) {
-                        // Calculate gradient components using the Sobel operator
+            // Calculate gradient components using the Sobel operator
 			float Gx = getValueGlobal(h_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(h_input, countX, countY, i - 1, j) + getValueGlobal(h_input, countX, countY, i - 1, j + 1)
 				- getValueGlobal(h_input, countX, countY, i + 1, j - 1) - 2 * getValueGlobal(h_input, countX, countY, i + 1, j) - getValueGlobal(h_input, countX, countY, i + 1, j + 1);
 			float Gy = getValueGlobal(h_input, countX, countY, i - 1, j - 1) + 2 * getValueGlobal(h_input, countX, countY, i, j - 1) + getValueGlobal(h_input, countX, countY, i + 1, j - 1)
 				- getValueGlobal(h_input, countX, countY, i - 1, j + 1) - 2 * getValueGlobal(h_input, countX, countY, i, j + 1) - getValueGlobal(h_input, countX, countY, i + 1, j + 1);
                         
-                        // Calculate the gradient magnitude and store it in the output buffer
+            // Calculate the gradient magnitude and store it in the output buffer
 			h_outputCpu[getIndexGlobal(countX, i, j)] = sqrt(Gx * Gx + Gy * Gy);
                         
-                        // Calculate the orientation angle of the gradient and determine the edge segment
+            // Calculate the orientation angle of the gradient and determine the edge segment
 			double theta = std::atan2(Gy, Gx);
 
 			theta = theta * (360.0 / (2.0 * M_PI));
@@ -241,12 +245,13 @@ void sobelEdgeDetector(std::vector<float>& h_outputCpu, const std::vector<float>
 				else
 					segment = 0;
                  
-                                // Store the detected segment in the output buffer
+                // Store the detected segment in the output buffer
 				h_out_segment[getIndexGlobal(countX, i, j)] = segment;
 			}
 		}
 	}
 }
+
 /******************************************************************************************************************************
 * Function name: nonMaxSuppression
 * Apply non-maximum suppression to the input gradient magnitude image based on gradient orientations.
@@ -297,11 +302,8 @@ void nonMaxSuppression(std::vector<float>& h_outputCpu, const std::vector<float>
 				h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
 				break;
 			}
-			//std::cout << h_input[getIndexGlobal(countX, i, j)] << ", ";
 		}
-
 	}
-
 }
 
 /******************************************************************************************************************************
@@ -311,8 +313,8 @@ void nonMaxSuppression(std::vector<float>& h_outputCpu, const std::vector<float>
 *  h_outputCpu -
 *  h_input -
 *  median -
-*  countX -
-*  countY -
+*  countX - Width of the image in pixels
+*  countY - Height of the image in pixels
 * Return:
 *  void
 ********************************************************************************************************************************
@@ -356,8 +358,8 @@ void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<flo
 * Parameters:
 *  h_outputCpu -
 *  h_input -
-*  countX -
-*  countY -
+*  countX - Width of the image in pixels
+*  countY - Height of the image in pixels
 * Return:
 *  void
 ********************************************************************************************************************************
@@ -401,19 +403,7 @@ void applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h
 	memset(h_outputCpu_NonMaxSupression.data(), 255, size);
 	memset(h_outputCpu_DoubleThreshold.data(), 255, size);
 
-	/*Core::TimeSpan cpubeginGaussian = Core::getCurrentTime();
-	gaussianFilter(h_outputCpu_Gaussian, h_input, countX, countY);
-	Core::TimeSpan cpuendGaussian = Core::getCurrentTime();
-	Core::TimeSpan cpubeginsobel = Core::getCurrentTime();
-	sobelEdgeDetector(h_outputCpu_Sobel, h_outputCpu_Gaussian, h_out_segment, countX, countY);
-	Core::TimeSpan cpuendSobel = Core::getCurrentTime();
-	nonMaxSuppression(h_outputCpu_NonMaxSupression, h_outputCpu_Sobel, h_out_segment, countX, countY);
-	Core::TimeSpan cpuendNonmaxsuppression = Core::getCurrentTime();
-	applyDoubleThreshold(h_outputCpu_DoubleThreshold, h_outputCpu_NonMaxSupression, countX, countY);
-	Core::TimeSpan cpuendDoublethreshold = Core::getCurrentTime();
-	applyEdgeHysteresis(h_outputCpu, h_outputCpu_DoubleThreshold, countX, countY);
-	Core::TimeSpan cpuendHysteresis = Core::getCurrentTime();
-	*/
+
 	cpubeginGaussian = Core::getCurrentTime();
 	gaussianFilter(h_outputCpu_Gaussian, h_input, countX, countY);
 	cpuendGaussian = Core::getCurrentTime();

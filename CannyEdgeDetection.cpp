@@ -1,8 +1,23 @@
 /*
-* Canny Edge Detection
-* This program implements Canny Edge detection through 5 steps:
-* ........
+* File name: Canny Edge Detection.cpp
+* 
+* This program implements Canny Edge detection on the input image.
+* Histogram Equilization is applied as a pre-precessing step to equalize the image intensities throughout the image.
+* This image is then given to the Canny edge detector.
+*
+* Canny edge detection algorithm has 5 steps:
+* 1. Apply Gaussian filter
+* 2. Apply Sobel filter
+* 3. Apply non-maximum suppression
+* 4. Apply a double threshold
+* 5. Track the edges using hysteresis
+* 
+* This algorithm is implemented on both CPU and GPU and the performance speedup is displayed to the user.
+* 
 * Project Team:
+* Gopika Rajan (3575765)
+* M.Mehroz Khan (3523539)
+* Swathi Shridhar (3578034)
 * 
 */
 
@@ -35,17 +50,12 @@
 #define M_PI acos(-1.0)
 #define NUMBER_OF_BINS 256
 
-
-
-
-
-
 /**********************************************************************************************************************
 * Function definitions
 ***********************************************************************************************************************
 */
 
-/**
+/**********************************************************************************************************************
  * Function name: Performance
  * Measure and print performance data for different functionalities.
  * Parameters:
@@ -54,6 +64,7 @@
  *  event4 - Event corresponding to the memory copy of output2 back to host
  *  f - A string describing the functionality being measured.
  *  cputime - CPU time for the functionality.
+ **********************************************************************************************************************
  */
 
 void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
@@ -85,14 +96,16 @@ void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::s
 	std::cout << str.str() << std::endl;
 }
 
-/**
- * Overloaded function to measure and print performance data for different functionalities with only single output copy back.
+/**********************************************************************************************************************
+ * Overloaded function to measure and print performance data for different functionalities with only single 
+ * output copy back.
  * Parameters:
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
  *  f - A string describing the functionality being measured.
  *  cputime - CPU time for the functionality.
+ **********************************************************************************************************************
  */
 void Performance(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
 {
@@ -101,17 +114,13 @@ void Performance(cl::Event* event2, cl::Event* event3, std::string f, Core::Time
 	Performance(event2, event3, nullptr, f, cputime);
 }
 
-
-
-
 /******************************************************************************************************************************
 * Function name: main
-*
+* This is the main function. In this function the input image is imported and the histogram equalization and canny edge detection
+* algorithms are applied using CPU and on GPU. The performance of these two implementations are compared and the output images 
+* are stored.
 * Parameters:
-*  h_outputCpu -
-*  h_input -
-*  countX -
-*  countY -
+*  none
 * Return:
 *  int
 ********************************************************************************************************************************
@@ -407,8 +416,6 @@ int main(int argc, char** argv) {
 	cl::Event eventNM4;
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
-	
-	*/
 
 
 	//double threshold
