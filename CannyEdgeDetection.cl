@@ -44,7 +44,7 @@ __kernel void histogramEqualizationKernel(__global float* d_input, __global int*
 	float normalizationFactor = (float)(NUMBER_OF_BINS - 1);
 	uint Pixel_value = d_input[getIndexGlobal(countX, i, j)];
 	float x = d_Cdf[Pixel_value] * 255 / (countX * countY);
-	d_output[getIndexGlobal(countX, i, j)] = round(x);
+	d_output[getIndexGlobal(countX, i, j)] = round(x)/255;
 			
 }
 
@@ -114,8 +114,8 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output, __g
 
 }
 
-/*
-__kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global float* d_output2, __global const int* d_in_segment1) {
+
+__kernel void nonMaxSuppressionKernel(__global float* d_input, __global float* d_output, __global int* d_in_segment) {
 
 	uint i = get_global_id(0);
 	uint j = get_global_id(1);
@@ -123,48 +123,42 @@ __kernel void nonMaxSuppressionKernel(__global const float* d_input2, __global f
 	uint countX = get_global_size(0);
 	uint countY = get_global_size(1);
 
-	int segment = d_in_segment1[getIndexGlobal(countX, i, j)];
-	float currentPixel = d_input2[getIndexGlobal(countX, i, j)];
-	float leftPixel, rightPixel, upperPixel, lowerPixel;
+	switch (d_in_segment[getIndexGlobal(countX, i, j)]) {
 
-	switch (segment) {
-	case 1:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
-		if (leftPixel >= currentPixel || rightPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 2:
-		leftPixel = d_input2[getIndexGlobal(countX, i - 1, j)];
-		rightPixel = d_input2[getIndexGlobal(countX, i + 1, j)];
-		if (leftPixel >= currentPixel || rightPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 3:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
-		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	case 4:
-		upperPixel = d_input2[getIndexGlobal(countX, i, j - 1)];
-		lowerPixel = d_input2[getIndexGlobal(countX, i, j + 1)];
-		if (upperPixel >= currentPixel || lowerPixel > currentPixel)
-			d_output2[getIndexGlobal(countX, i, j)] = 0;
-		else
-			d_output2[getIndexGlobal(countX, i, j)] = currentPixel;
-		break;
-	default:
-		d_output2[getIndexGlobal(countX, i, j)] = 0;
-		break;
+		case 1: // Horizontal "-"
+			// Check if the current pixel's magnitude is greater than its neighbors in the horizontal direction
+			if (getValueGlobal(d_input, countX, countY, i - 1, j) >= d_input[getIndexGlobal(countX, i, j)] || getValueGlobal(d_input, countX, countY, i + 1, j) > d_input[getIndexGlobal(countX, i, j)])
+				d_output[getIndexGlobal(countX, i, j)] = 0;
+			else 
+				d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+			break;
+		
+		case 2: // Diagonal "/"
+				// Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
+				if (getValueGlobal(d_input, countX, countY, i + 1, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i - 1, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else 
+					d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		case 3: // Vertical "|"
+                                // Check if the current pixel's magnitude is greater than its neighbors in the vertical direction
+				if (getValueGlobal(d_input, countX, countY, i, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		case 4: // Diagonal "\"
+							// Check if the current pixel's magnitude is greater than its neighbors in the diagonal direction
+				if (getValueGlobal(d_input, countX, countY, i - 1, j - 1) >= getValueGlobal(d_input, countX, countY, i, j) || getValueGlobal(d_input, countX, countY, i + 1, j + 1) > getValueGlobal(d_input, countX, countY, i, j))
+					d_output[getIndexGlobal(countX, i, j)] = 0;
+				else d_output[getIndexGlobal(countX, i, j)] = d_input[getIndexGlobal(countX, i, j)];
+				break;
+		default:
+			d_output[getIndexGlobal(countX, i, j)] = 0;
+			break;
 	}
-*/
+	
+}
+
 /******************************************************************************************************************************
 *OpenCL Kernel : DoubleThresholdKernel
 *Applying double threshold to tne output of non-max suppression
@@ -187,11 +181,11 @@ __kernel void DoubleThresholdKernel(__global float* d_inputDt, __global float* d
 
         //Checking for strong edge pixel
    	if (getValueGlobal(d_inputDt, countX, countY, i, j) > high_threshold)
-		d_outputDt[getIndexGlobal(countX, i, j)] = 255;
+		d_outputDt[getIndexGlobal(countX, i, j)] = 1;
         // Checking for weak edge pixel
 	else if (getValueGlobal(d_inputDt, countX, countY, i, j) > low_threshold)
 	{
-		d_outputDt[getIndexGlobal(countX, i, j)] = 127;
+		d_outputDt[getIndexGlobal(countX, i, j)] = 0.5;
 
 	}
         // Suppress edges with gradient less than low threshold
@@ -224,13 +218,13 @@ __kernel void HysteresisKernel(__global float* d_inputHst, __global float* d_out
 	d_outputHst[getIndexGlobal(countX, i, j)] = d_inputHst[getIndexGlobal(countX, i, j)];
 
         // Check if current pixel is weak edge pixel
-	if (d_inputHst[getIndexGlobal(countX, i, j)] == 127) {
+	if (d_inputHst[getIndexGlobal(countX, i, j)] == 0.5) {
                 // Check if the neighboring pixels are strong edge pixels
-		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
-			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 255 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 255)
-			d_outputHst[getIndexGlobal(countX, i, j)] = 255; // set current ouput pixel as an edge
+		if (d_inputHst[getIndexGlobal(countX, i, j) - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + 1] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + countX] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) - countX - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) - countX + 1] == 1 ||
+			d_inputHst[getIndexGlobal(countX, i, j) + countX - 1] == 1 || d_inputHst[getIndexGlobal(countX, i, j) + countX + 1] == 1)
+			d_outputHst[getIndexGlobal(countX, i, j)] = 1; // set current ouput pixel as an edge
 		else
 			d_outputHst[getIndexGlobal(countX, i, j)] = 0;   // set current ouput pixel to not an edge
 	}

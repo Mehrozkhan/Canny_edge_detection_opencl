@@ -26,8 +26,8 @@
 * Global variables
 ***********************************************************************************************************************
 */
-float high_threshold = 65 * 1.33;//0.25*255;
-float low_threshold = 65 * 0.66;//0.05*255;
+float high_threshold = (65 * 1.33)/255;//0.25*255;
+float low_threshold = (65 * 0.66)/255;//0.05*255;
 
 Core::TimeSpan cpubeginGaussian = Core::TimeSpan::fromSeconds(0);
 Core::TimeSpan cpuendGaussian = Core::TimeSpan::fromSeconds(0);
@@ -143,7 +143,7 @@ void histogramEqualization(std::vector<float>& h_outputCpu, std::vector<float>& 
 	{
 		for (int j = 0; j < countY; j++)
 		{
-			h_outputCpu[getIndexGlobal(countX, i, j)] = std::round(cdf[h_input[getIndexGlobal(countX, i, j)]] * 255 / (countX * countY));
+			h_outputCpu[getIndexGlobal(countX, i, j)] = std::round(cdf[h_input[getIndexGlobal(countX, i, j)]] * 255 / (countX * countY))/255;
 			//h_outputCpu[getIndexGlobal(countX, i, j)] = h_outputCpu[getIndexGlobal(countX, i, j)] ;
 			//std::cout << h_outputCpu[getIndexGlobal(countX, i, j)] << ", ";
 		}
@@ -337,10 +337,10 @@ void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<flo
 		for (int j = 0; j < countY; j++) {
 
 			if (h_input[getIndexGlobal(countX, i, j)] > high_threshold)
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 255;      //absolutely edge
+				h_outputCpu[getIndexGlobal(countX, i, j)] = 1;      //absolutely edge
 			else if (h_input[getIndexGlobal(countX, i, j)] > low_threshold)
 			{
-				h_outputCpu[getIndexGlobal(countX, i, j)] = 127;      //potential edge
+				h_outputCpu[getIndexGlobal(countX, i, j)] = 0.5;      //potential edge
 
 			}
 			else
@@ -366,12 +366,12 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 	memcpy(h_outputCpu.data(), h_input.data(), countX * countY * sizeof(float));
 	for (int i = 1; i < countX - 1; i++) {
 		for (int j = 1; j < countY - 1; j++) {
-			if (h_input[getIndexGlobal(countX, i, j)] == 127) {
-				if (h_input[getIndexGlobal(countX, i, j) - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + 1] == 255 ||
-					h_input[getIndexGlobal(countX, i, j) - countX] == 255 || h_input[getIndexGlobal(countX, i, j) + countX] == 255 ||
-					h_input[getIndexGlobal(countX, i, j) - countX - 1] == 255 || h_input[getIndexGlobal(countX, i, j) - countX + 1] == 255 ||
-					h_input[getIndexGlobal(countX, i, j) + countX - 1] == 255 || h_input[getIndexGlobal(countX, i, j) + countX + 1] == 255)
-					h_outputCpu[getIndexGlobal(countX, i, j)] = 255;
+			if (h_input[getIndexGlobal(countX, i, j)] == 0.5) {
+				if (h_input[getIndexGlobal(countX, i, j) - 1] == 1 || h_input[getIndexGlobal(countX, i, j) + 1] == 1 ||
+					h_input[getIndexGlobal(countX, i, j) - countX] == 1 || h_input[getIndexGlobal(countX, i, j) + countX] == 1 ||
+					h_input[getIndexGlobal(countX, i, j) - countX - 1] == 1 || h_input[getIndexGlobal(countX, i, j) - countX + 1] == 1 ||
+					h_input[getIndexGlobal(countX, i, j) + countX - 1] == 1 || h_input[getIndexGlobal(countX, i, j) + countX + 1] == 1)
+					h_outputCpu[getIndexGlobal(countX, i, j)] = 1;
 
 				else
 					h_outputCpu[getIndexGlobal(countX, i, j)] = 0;
@@ -428,7 +428,7 @@ std::vector<float> applyCanny_CPU(std::vector<float>& h_outputCpu, const std::ve
 	cpuendHysteresis = Core::getCurrentTime();
 
 	
-
+	Core::writeImagePGM("Histogram equalization_Cpu_Output.pgm", h_input, countX, countY);
 	Core::writeImagePGM("Gaussian_Cpu_Output.pgm", h_outputCpu_Gaussian, countX, countY);
 	Core::writeImagePGM("Sobel_Cpu_Output.pgm", h_outputCpu_Sobel, countX, countY);
 	Core::writeImagePGM("NonMaxSupression_Cpu_Output.pgm", h_outputCpu_NonMaxSupression, countX, countY);
