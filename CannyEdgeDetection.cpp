@@ -1,4 +1,4 @@
-/*
+/**********************************************************************************************************************
 * File name: Canny Edge Detection.cpp
 * 
 * This program implements Canny Edge detection on the input image.
@@ -18,7 +18,7 @@
 * Gopika Rajan (3575765)
 * M.Mehroz Khan (3523539)
 * Swathi Shridhar (3578034)
-* 
+***********************************************************************************************************************
 */
 
 /**********************************************************************************************************************
@@ -88,11 +88,11 @@ void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::s
 	std::stringstream str;
 	str << std::setiosflags(std::ios::left) << std::setw(20) << f;
 	str << std::setiosflags(std::ios::right);
-	str << " " << std::setw(9) << cputime.toString();
-	str << " " << std::setw(9) << gputime1.toString();
-	str << " " << std::setw(14) << totalgputime.toString();
-	str << " " << std::setw(13) << (cputime.getSeconds() / gputime1.getSeconds());
-	str << " " << std::setw(12) << (cputime.getSeconds() / totalgputime.getSeconds());
+	str << " " << std::setw(10) << cputime.toString();
+	str << " " << std::setw(12) << gputime1.toString();
+	str << " " << std::setw(15) << totalgputime.toString();
+	str << " " << std::setw(14) << (cputime.getSeconds() / gputime1.getSeconds());
+	str << " " << std::setw(15) << (cputime.getSeconds() / totalgputime.getSeconds());
 	std::cout << str.str() << std::endl;
 }
 
@@ -149,14 +149,13 @@ int main(int argc, char** argv) {
 
 	// Get a device of the context
 	int deviceNr = argc < 2 ? 1 : atoi(argv[1]);
-	std::cout << "Using device " << deviceNr << " / " << context.getInfo<CL_CONTEXT_DEVICES>().size() << std::endl;
+	
 	ASSERT (deviceNr > 0);
 	ASSERT ((size_t) deviceNr <= context.getInfo<CL_CONTEXT_DEVICES>().size());
 	cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[deviceNr - 1];
 	std::vector<cl::Device> devices;
 	devices.push_back(device);
-	OpenCL::printDeviceInfo(std::cout, device);
-
+	
 	// Create a command queue
 	cl::CommandQueue queue(context, device, CL_QUEUE_PROFILING_ENABLE);
 
@@ -461,27 +460,41 @@ int main(int argc, char** argv) {
 	Core::TimeSpan cputimeNonmaxsupression = cpuendNonmaxsuppression - cpuendSobel;
 	Core::TimeSpan cputimeDoublethreshold = cpuendDoublethreshold - cpuendNonmaxsuppression;
 	Core::TimeSpan cputimeHysteresis = cpuendHysteresis - cpuendDoublethreshold;
-	std::cout << std::endl << "Using platform '" << platforms[platformId].getInfo<CL_PLATFORM_NAME>() << "' from '" << platforms[platformId].getInfo<CL_PLATFORM_VENDOR>() << "'" << std::endl;
-	std::cout << "performance data for implementation :" << std::endl;
-       
+	Core::TimeSpan cputimeCanny = cpuend - cpubegin;
+	/* Print Performance data */
+	
+	std::cout << "******************************  CANNY EDGE DETECTOR  *******************************" << std::endl;
+	std::cout << std::endl << "Device information:" << std::endl;
+	std::cout << "Using platform '" << platforms[platformId].getInfo<CL_PLATFORM_NAME>() << "' from '" << platforms[platformId].getInfo<CL_PLATFORM_VENDOR>() << "'" << std::endl;
+	std::cout << "Using device " << deviceNr << " / " << context.getInfo<CL_CONTEXT_DEVICES>().size() << std::endl;
+	OpenCL::printDeviceInfo(std::cout, device);
+
+	std::cout << std::endl << "Image information:" << std::endl;
+	std::cout << "Input Image Resolution: " << countX << " x " << countY << " Pixels " << std::endl;
+	std::cout << "Image format: Grayscale (.pgm)" << std::endl;
+
+	std::cout << std::endl << "Performance data for implementation :" << std::endl;
+	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
         /////////// String stream for performance headers///////////////////////////////
 	std::stringstream str1;
 	str1 << std::setiosflags(std::ios::left) << std::setw(20) << "Functionality";
 	str1 << std::setiosflags(std::ios::right);
-	str1 << " " << std::setw(9) << "cputime";
-	str1 << " " << std::setw(9) << "gputime w/o MC";
-	str1 << " " << std::setw(9) << "Totalgputime";
-	str1 << " " << std::setw(9) << "speedup w/o MC";
-	str1 << " " << std::setw(9) << "speedup MC";
+	str1 << " " << std::setw(9) << "| CpuTime |";
+	str1 << " " << std::setw(9) << "GpuTime w/o MC |";
+	str1 << " " << std::setw(9) << "TotalGpuTime |";
+	str1 << " " << std::setw(9) << "Speedup w/o MC |";
+	str1 << " " << std::setw(9) << " Speedup MC  |";
 	std::cout << str1.str() << std::endl;
-
+	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
         /////////// Calculating performance parameters for different functionalities/////////////////////
 	Performance(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
 	Performance(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
 	Performance(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
 	Performance(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
 	Performance(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
-	
+	std::cout << std::endl;
+	Performance(&eventHst2, &eventHst3, "CannyEdgeDetection", cputimeCanny); ////////edit
+	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
         //////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("7_Histogram_Equalization_Gpu_Output.pgm", h_outputGpu_HistogramEqualization, countX, countY);
 	Core::writeImagePGM("8_Gaussian_Gpu_Output.pgm", h_outputGpu_Gaussian, countX, countY);

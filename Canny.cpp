@@ -332,8 +332,7 @@ void applyDoubleThreshold(std::vector<float>& h_outputCpu, const std::vector<flo
 	float mean = sum / (countX * countY);
 
 	
-	std::cout << "high_threshold: " << high_threshold << std::endl;
-	std::cout << "low_threshold " << low_threshold << std::endl;
+	
 
 	for (int i = 0; i < countX; i++) {
 		for (int j = 0; j < countY; j++) {
@@ -383,8 +382,18 @@ void applyEdgeHysteresis(std::vector<float>& h_outputCpu, const std::vector<floa
 
 }
 
-
-
+/******************************************************************************************************************************
+* Function name: applyEdgeHysteresis
+*
+* Parameters:
+*  h_outputCpu -
+*  h_input -
+*  countX - Width of the image in pixels
+*  countY - Height of the image in pixels
+* Return:
+*  void
+********************************************************************************************************************************
+*/
 void applyCanny_CPU(std::vector<float>& h_outputCpu, const std::vector<float>& h_input, std::size_t countX, std::size_t countY,
 	std::size_t count, std::size_t size)
 {
