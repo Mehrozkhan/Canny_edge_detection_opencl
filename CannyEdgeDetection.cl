@@ -69,7 +69,8 @@ __kernel void gaussianKernel(__global float* d_input, __global float* d_output) 
 	for (int x = -2; x <= 2; x++) {
 		for (int y = -2; y <= 2; y++) {
 			float pixelValue = getValueGlobal(d_input, countX, countY, i + x, j + y);
-			sum += weights[x + 2][y + 2] * pixelValue;
+			float sum_temp = sum;
+			sum = sum_temp + weights[x + 2][y + 2] * pixelValue;
 		}
 	}
 
@@ -113,6 +114,7 @@ __kernel void sobelKernel(__global float* d_input, __global float* d_output, __g
 			
 
 }
+
 
 
 __kernel void nonMaxSuppressionKernel(__global float* d_input, __global float* d_output, __global int* d_in_segment) {
