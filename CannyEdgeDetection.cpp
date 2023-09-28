@@ -59,6 +59,8 @@
  * Function name: Performance
  * Measure and print performance data for different functionalities.
  * Parameters:
+ *  event1_1 - Event corresponding to the memory copy of Input1 to the device
+ *  event1_2 - Event corresponding to the memory copy of Input2 to the device
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
@@ -67,24 +69,33 @@
  **********************************************************************************************************************
  */
 
-void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
+void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime, cl::Event* event1_2)
 {
 	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(*event2); //gputime before memory copy
 	Core::TimeSpan gputime2 = Core::TimeSpan::fromSeconds(0);  //gputime after memory copy
 
-	if (event4 != nullptr)
+	if (event4 == nullptr)
 	{
-		gputime2 = OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
+		//gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
 		//std::cout <<" check1: "<< gputime2.toString()<< std::endl;
+		if (event1_2 == nullptr)
+		{
+			gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3);
+		}
+		if (event1_2 != nullptr)
+		{
+			gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event1_2) + OpenCL::getElapsedTime(*event3);
+		}
 	}
 	else
 	{
-		gputime2 = OpenCL::getElapsedTime(*event3);
+		//gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3);
 		//std::cout << " check2: " << gputime2.toString() << std::endl;
+		gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
 	}
 	Core::TimeSpan totalgputime = gputime1 + gputime2; //total gpu time
 
-        //String stream to format and print the performance data
+		//String stream to format and print the performance data
 	std::stringstream str;
 	str << std::setiosflags(std::ios::left) << std::setw(20) << f;
 	str << std::setiosflags(std::ios::right);
@@ -97,9 +108,11 @@ void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::s
 }
 
 /**********************************************************************************************************************
- * Overloaded function to measure and print performance data for different functionalities with only single 
+ * Overloaded function to measure and print performance data for different functionalities with only single
  * output copy back.
  * Parameters:
+ *  event1_1 - Event corresponding to the memory copy of Input1 to the device
+ *  event1_2 - Event corresponding to the memory copy of Input2 to the device
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
@@ -107,12 +120,53 @@ void Performance(cl::Event* event2, cl::Event* event3, cl::Event* event4, std::s
  *  cputime - CPU time for the functionality.
  **********************************************************************************************************************
  */
-void Performance(cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
+
+void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime, cl::Event* event1_2)
 {
-	//cl::Event* event4 = nullptr;
-        // Call the main gputime function with event4 set to nullptr.
-	Performance(event2, event3, nullptr, f, cputime);
+	// Call the main gputime function with event4 set to nullptr.
+	Performance(event1_1, event2, event3, nullptr, f, cputime, event1_2);
 }
+
+/**********************************************************************************************************************
+ * Overloaded function to measure and print performance data for different functionalities with only single
+ * output copy back.
+ * Parameters:
+ *  event1_1 - Event corresponding to the memory copy of Input1 to the device
+ *  event1_2 - Event corresponding to the memory copy of Input2 to the device
+ *  event2 - Event corresponding to the kernal launch of a GPU functionality
+ *  event3 - Event corresponding to the memory copy of output1 back to host
+ *  event4 - Event corresponding to the memory copy of output2 back to host
+ *  f - A string describing the functionality being measured.
+ *  cputime - CPU time for the functionality.
+ **********************************************************************************************************************
+ */
+
+void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
+{
+	// Call the main gputime function with event1_2 set to nullptr.
+	Performance(event1_1, event2, event3, event4, f, cputime, nullptr);
+}
+
+/**********************************************************************************************************************
+ * Overloaded function to measure and print performance data for different functionalities with only single
+ * output copy back.
+ * Parameters:
+ *  event1_1 - Event corresponding to the memory copy of Input1 to the device
+ *  event1_2 - Event corresponding to the memory copy of Input2 to the device
+ *  event2 - Event corresponding to the kernal launch of a GPU functionality
+ *  event3 - Event corresponding to the memory copy of output1 back to host
+ *  event4 - Event corresponding to the memory copy of output2 back to host
+ *  f - A string describing the functionality being measured.
+ *  cputime - CPU time for the functionality.
+ **********************************************************************************************************************
+ */
+
+void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
+{
+	// Call the main gputime function with event 1_2, event4 set to nullptr.
+	Performance(event1_1, event2, event3, nullptr, f, cputime, nullptr);
+}
+
 
 /******************************************************************************************************************************
 * Function name: main
@@ -487,15 +541,23 @@ int main(int argc, char** argv) {
 	std::cout << str1.str() << std::endl;
 	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
         /////////// Calculating performance parameters for different functionalities/////////////////////
-	Performance(&eventG2, &eventG3, "Gaussian", cputimeGaussian);
-	Performance(&eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
-	Performance(&eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression);
-	Performance(&eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
-	Performance(&eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
-	std::cout << std::endl;
-	Performance(&eventHst2, &eventHst3, "CannyEdgeDetection", cputimeCanny); ////////edit
+	Performance(&eventG1, &eventG2, &eventG3, "Gaussian", cputimeGaussian);
+	Performance(&eventS1, &eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
+	Performance(&eventNM1, &eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression, &eventNM2);
+	Performance(&eventDt1, &eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
+	Performance(&eventHst1, &eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
+	std::cout << std::endl; ////////edit
 	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
-        //////// Store GPU output image ///////////////////////////////////
+    
+	   //////////////////////Overall Performance Parameters////////////////////////////
+	Core::TimeSpan gputime_canny = OpenCL::getElapsedTime(eventG2) + OpenCL::getElapsedTime(eventS2) + OpenCL::getElapsedTime(eventNM3) + OpenCL::getElapsedTime(eventDt2) + OpenCL::getElapsedTime(eventHst2);
+	Core::TimeSpan gputime_canny_total = OpenCL::getElapsedTime(eventG1) + OpenCL::getElapsedTime(eventS1) + OpenCL::getElapsedTime(eventNM1) + OpenCL::getElapsedTime(eventNM2) + OpenCL::getElapsedTime(eventDt1) + OpenCL::getElapsedTime(eventHst1) + OpenCL::getElapsedTime(eventG3) + OpenCL::getElapsedTime(eventS3) + OpenCL::getElapsedTime(eventS4) + OpenCL::getElapsedTime(eventNM4) + OpenCL::getElapsedTime(eventDt3) + OpenCL::getElapsedTime(eventHst3) + gputime_canny;
+	std::cout << std::endl << "CPU time for Canny edge detection : " << cputimeCanny.toString();
+	std::cout << std::endl << "GPU time for Canny edge detection before memory copy : " << gputime_canny.toString();
+	std::cout << std::endl << "GPU time for Canny edge detection after memory copy : " << gputime_canny_total.toString();
+	std::cout << std::endl << "Speedup for Canny edge detection before memory copy: " << (cputimeCanny.getSeconds() / gputime_canny.getSeconds());
+	std::cout << std::endl << "Speedup for Canny edge detection after memory copy: " << (cputimeCanny.getSeconds() / gputime_canny_total.getSeconds());
+	    //////// Store GPU output image ///////////////////////////////////
 	Core::writeImagePGM("7_Histogram_Equalization_Gpu_Output.pgm", h_outputGpu_HistogramEqualization, countX, countY);
 	Core::writeImagePGM("8_Gaussian_Gpu_Output.pgm", h_outputGpu_Gaussian, countX, countY);
 	Core::writeImagePGM("9_Sobel_Gpu_Output.pgm", h_outputGpu_Sobel, countX, countY);
@@ -514,7 +576,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (errorCount > (0.01 * countX * countY)) {
-		std::cout << "Found " << errorCount << " incorrect results out of"<< countX * countY << "pixels" << std::endl;
+		std::cout << std::endl << "Found " << errorCount << " incorrect results out of"<< countX * countY << "pixels" << std::endl;
 		return 1;
 	} 
 
