@@ -41,6 +41,6 @@ Instructions to run this code in Visual Studio
 ### Executing different example
 1. Differnt sample examples are placed in the images directory (src/InputImages).
 2. To run differnt example set we have to change the image name in the CannyEdgeDetection.cpp source file(Provide the complete path for images).
-      - --TODO-- (code line to change)
+      - https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/e03c6eaf914d0a8ef5ae45ec18fad20cd608fe6c/src/CannyEdgeDetection.cpp#L211 
 3. Rebuid the project and execute.
 
