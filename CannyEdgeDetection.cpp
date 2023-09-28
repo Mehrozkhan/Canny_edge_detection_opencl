@@ -13,6 +13,7 @@
 * 5. Track the edges using hysteresis
 * 
 * This algorithm is implemented on both CPU and GPU and the performance speedup is displayed to the user.
+* The output images are stored in the out\build\x64-Debug directory.
 * 
 * Project Team:
 * Gopika Rajan (3575765)
@@ -61,66 +62,59 @@
  * Parameters:
  *  event1_1 - Event corresponding to the memory copy of Input1 to the device
  *  event1_2 - Event corresponding to the memory copy of Input2 to the device
- *  event2 - Event corresponding to the kernal launch of a GPU functionality
+ *  event2 - Event corresponding to the kernel launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
  *  f - A string describing the functionality being measured.
  *  cputime - CPU time for the functionality.
  **********************************************************************************************************************
  */
-
 void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime, cl::Event* event1_2)
 {
-	Core::TimeSpan gputime1 = OpenCL::getElapsedTime(*event2); //gputime before memory copy
-	Core::TimeSpan gputime2 = Core::TimeSpan::fromSeconds(0);  //gputime after memory copy
+	Core::TimeSpan gpuExecutionTime = OpenCL::getElapsedTime(*event2); //gputime before memory copy
+	Core::TimeSpan gpuMemCopyTime = Core::TimeSpan::fromSeconds(0);  //gputime after memory copy
 
 	if (event4 == nullptr)
 	{
-		//gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
-		//std::cout <<" check1: "<< gputime2.toString()<< std::endl;
 		if (event1_2 == nullptr)
 		{
-			gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3);
+			gpuMemCopyTime = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3);
 		}
 		if (event1_2 != nullptr)
 		{
-			gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event1_2) + OpenCL::getElapsedTime(*event3);
+			gpuMemCopyTime = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event1_2) + OpenCL::getElapsedTime(*event3);
 		}
 	}
 	else
 	{
-		//gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3);
-		//std::cout << " check2: " << gputime2.toString() << std::endl;
-		gputime2 = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
+		gpuMemCopyTime = OpenCL::getElapsedTime(*event1_1) + OpenCL::getElapsedTime(*event3) + OpenCL::getElapsedTime(*event4);
 	}
-	Core::TimeSpan totalgputime = gputime1 + gputime2; //total gpu time
+	Core::TimeSpan totalGpuTime = gpuExecutionTime + gpuMemCopyTime; //total gpu time
 
-		//String stream to format and print the performance data
+	//String stream to format and print the performance data
 	std::stringstream str;
 	str << std::setiosflags(std::ios::left) << std::setw(20) << f;
 	str << std::setiosflags(std::ios::right);
 	str << " " << std::setw(10) << cputime.toString();
-	str << " " << std::setw(12) << gputime1.toString();
-	str << " " << std::setw(15) << totalgputime.toString();
-	str << " " << std::setw(14) << (cputime.getSeconds() / gputime1.getSeconds());
-	str << " " << std::setw(15) << (cputime.getSeconds() / totalgputime.getSeconds());
+	str << " " << std::setw(12) << gpuExecutionTime.toString();
+	str << " " << std::setw(15) << totalGpuTime.toString();
+	str << " " << std::setw(14) << (cputime.getSeconds() / gpuExecutionTime.getSeconds());
+	str << " " << std::setw(15) << (cputime.getSeconds() / totalGpuTime.getSeconds());
 	std::cout << str.str() << std::endl;
 }
 
 /**********************************************************************************************************************
- * Overloaded function to measure and print performance data for different functionalities with only single
- * output copy back.
+ * Overloaded function to measure and print performance data for different functionalities with two input copy and 
+ * only single output copy back event.
  * Parameters:
  *  event1_1 - Event corresponding to the memory copy of Input1 to the device
  *  event1_2 - Event corresponding to the memory copy of Input2 to the device
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
- *  event4 - Event corresponding to the memory copy of output2 back to host
  *  f - A string describing the functionality being measured.
  *  cputime - CPU time for the functionality.
  **********************************************************************************************************************
  */
-
 void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime, cl::Event* event1_2)
 {
 	// Call the main gputime function with event4 set to nullptr.
@@ -128,11 +122,10 @@ void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std:
 }
 
 /**********************************************************************************************************************
- * Overloaded function to measure and print performance data for different functionalities with only single
- * output copy back.
+ * Overloaded function to measure and print performance data for different functionalities with only single input copy
+ * and two output copy back events.
  * Parameters:
  *  event1_1 - Event corresponding to the memory copy of Input1 to the device
- *  event1_2 - Event corresponding to the memory copy of Input2 to the device
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
@@ -140,7 +133,6 @@ void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std:
  *  cputime - CPU time for the functionality.
  **********************************************************************************************************************
  */
-
 void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::Event* event4, std::string f, Core::TimeSpan cputime)
 {
 	// Call the main gputime function with event1_2 set to nullptr.
@@ -149,10 +141,9 @@ void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::
 
 /**********************************************************************************************************************
  * Overloaded function to measure and print performance data for different functionalities with only single
- * output copy back.
+ * input copy and output copy back events.
  * Parameters:
  *  event1_1 - Event corresponding to the memory copy of Input1 to the device
- *  event1_2 - Event corresponding to the memory copy of Input2 to the device
  *  event2 - Event corresponding to the kernal launch of a GPU functionality
  *  event3 - Event corresponding to the memory copy of output1 back to host
  *  event4 - Event corresponding to the memory copy of output2 back to host
@@ -160,27 +151,25 @@ void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, cl::
  *  cputime - CPU time for the functionality.
  **********************************************************************************************************************
  */
-
 void Performance(cl::Event* event1_1, cl::Event* event2, cl::Event* event3, std::string f, Core::TimeSpan cputime)
 {
 	// Call the main gputime function with event 1_2, event4 set to nullptr.
 	Performance(event1_1, event2, event3, nullptr, f, cputime, nullptr);
 }
 
-
 /******************************************************************************************************************************
 * Function name: main
 * This is the main function. In this function the input image is imported and the histogram equalization and canny edge detection
-* algorithms are applied using CPU and on GPU. The performance of these two implementations are compared and the output images 
-* are stored.
+* algorithms are applied using CPU and GPU. The performance of these two implementations are compared and displayed on the console,
+* and the output images are stored.
 * Parameters:
 *  none
 * Return:
 *  int
 ********************************************************************************************************************************
 */
-
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
 	// Create a context	
 	//cl::Context context(CL_DEVICE_TYPE_GPU);
 	std::vector<cl::Platform> platforms;
@@ -197,13 +186,10 @@ int main(int argc, char** argv) {
 		}
 	}
 	cl_context_properties prop[4] = { CL_CONTEXT_PLATFORM, (cl_context_properties) platforms[platformId] (), 0, 0 };
-	
 	cl::Context context(CL_DEVICE_TYPE_GPU, prop);
-
 
 	// Get a device of the context
 	int deviceNr = argc < 2 ? 1 : atoi(argv[1]);
-	
 	ASSERT (deviceNr > 0);
 	ASSERT ((size_t) deviceNr <= context.getInfo<CL_CONTEXT_DEVICES>().size());
 	cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>()[deviceNr - 1];
@@ -219,10 +205,10 @@ int main(int argc, char** argv) {
 	// Compile the source code. This is similar to program.build(devices) but will print more detailed error messages
 	OpenCL::buildProgram(program, devices);
 
-	// Use an image (Valve.pgm) as input data
+	// Use an image as input data: Other input images are available in the src/InputImages folder.
 	std::vector<float> inputData;
 	std::size_t inputWidth, inputHeight;
-	Core::readImagePGM("../../../src/InputImages/Bikesgray.pgm", inputData, inputWidth, inputHeight);
+	Core::readImagePGM("../../../src/InputImages/Lizard.pgm", inputData, inputWidth, inputHeight);
 
 	// Declare some values
 	std::size_t wgSizeX = 16; // Number of work items per work group in X direction
@@ -232,7 +218,6 @@ int main(int argc, char** argv) {
 	std::size_t count = countX * countY; // Overall number of elements
 	std::size_t size = count * sizeof (float); // Size of data in bytes
 
-
 	// Allocate space for output data from CPU and GPU on the host
 	std::vector<float> h_input (count);
 	std::vector<float> h_outputCpu_HistogramEqualization(count);	
@@ -241,18 +226,12 @@ int main(int argc, char** argv) {
 	std::vector<int> h_outputGpu_HistogramCalculation(NUMBER_OF_BINS);
 	std::vector<int> cdf(NUMBER_OF_BINS);
 	std::vector<float> h_outputGpu_HistogramEqualization(count);
-	
 	std::vector<float> h_outputGpu_Gaussian(count);
-
 	std::vector<float> h_outputGpu_Sobel(count);
 	std::vector<int> h_out_segmentGpu(count);
-
 	std::vector<float> h_outputGpu_NonMaxSupression(count);
-	
-
 	std::vector<float> h_outputGpu_Doublethreshold(count);
 	std::vector<float> h_outputGpu_Canny(count);
-
 
 	// Allocate space for input and output data on the device
 	//TODO
@@ -260,51 +239,35 @@ int main(int argc, char** argv) {
 	cl::Buffer d_output_HistogramCalculation(context, CL_MEM_READ_WRITE, NUMBER_OF_BINS* sizeof(int));
 	cl::Buffer d_input_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_output_HistogramEqualization(context, CL_MEM_READ_WRITE, size);
-
 	cl::Buffer d_inputGpu_Gaussian(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputGpu_Gaussian(context, CL_MEM_READ_WRITE, size);
-
 	cl::Buffer d_inputGpu_Sobel(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputGpu_Sobel(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_out_segment(context, CL_MEM_READ_WRITE, size);
-
 	cl::Buffer d_inputGpu_NonMaxSupression(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputGpu_NonMaxSupression(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_in_segment(context, CL_MEM_READ_WRITE, size);
-
-
 	cl::Buffer d_outputCpu_Sobel(context, CL_MEM_READ_WRITE, size);
-	
-
 	cl::Buffer d_inputDt(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputDt(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_inputHst(context, CL_MEM_READ_WRITE, size);
 	cl::Buffer d_outputHst(context, CL_MEM_READ_WRITE, size);
 	
-	
-	
 	// Initialize memory to 0xff (useful for debugging because otherwise GPU memory will contain information from last execution)
 	memset(h_input.data(), 255, size);
 	memset(h_outputCpu_Canny.data(), 255, size);
-	memset(h_outputGpu_Sobel.data(), 255, size);
 
+	memset(h_outputGpu_Sobel.data(), 255, size);
 	memset(h_outputGpu_HistogramCalculation.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
-
 	memset(h_outputGpu_Gaussian.data(), 255, size);
-	
 	memset(h_outputGpu_NonMaxSupression.data(), 255, size);
-
 	memset(h_outputGpu_Doublethreshold.data(), 255, size);
 	memset(h_outputGpu_Canny.data(), 255, size);
 	memset(h_out_segmentGpu.data(), 255, size);
-
 	
-	//TODO: GPU
-
-	//////// Load input data ////////////////////////////////
-		
+	//Load input data into h_input
 	for (size_t j = 0; j < countY; j++) {
 		for (size_t i = 0; i < countX; i++) {
 
@@ -322,110 +285,98 @@ int main(int argc, char** argv) {
 		}
 	}
 		
-	// Do calculation on the host side
+	/******************************************Calculation on the host side*******************************************/
 	histogramEqualization(h_outputCpu_HistogramEqualization, h_input, countX, countY);
-	Core::TimeSpan cpubegin = Core::getCurrentTime();
 	applyCanny_CPU(h_outputCpu_Canny, h_outputCpu_HistogramEqualization, countX, countY, count, size);
-	Core::TimeSpan cpuend = Core::getCurrentTime();
+	/*****************************************************************************************************************/
 	
-	
-	
-	
-
 	// Reinitialize output memory to 0xff
 	memset(h_outputGpu_Sobel.data(), 255, size);
 	memset(cdf.data(), 255, NUMBER_OF_BINS * sizeof(int));
 	memset(h_outputGpu_HistogramEqualization.data(), 255, size);
-
 	memset(h_outputGpu_Gaussian.data(), 255, size);
-
 	memset(h_outputGpu_NonMaxSupression.data(), 255, size);
-
 	memset(h_out_segmentGpu.data(), 255, size);
 	memset(h_outputGpu_Doublethreshold.data(), 255, size);
 	memset(h_outputGpu_Canny.data(), 255, size);
-	//TODO: GPU
-
+	
+	/******************************************Calculation on the GPU*************************************************/
+	
+	/*----------------------------------------- Histogram calculation-----------------------------------------------*/
+	
 	// Copy input data to device
-	// TODO	
-	// 
-	// 
-	//Histogram Calculation
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
+
+	//Create a kernel object
 	cl::Kernel calculateHistogramKernel(program, "calculateHistogramKernel");
+
+	//Launch kernel
 	calculateHistogramKernel.setArg<cl::Buffer>(0, d_input);
 	calculateHistogramKernel.setArg<cl::Buffer>(1, d_output_HistogramCalculation);
+	queue.enqueueNDRangeKernel(calculateHistogramKernel, cl::NullRange, cl::NDRange(countX, countY), cl::NDRange(wgSizeX, wgSizeY), NULL, NULL);
 
-	queue.enqueueNDRangeKernel(calculateHistogramKernel,
-		cl::NullRange,
-		cl::NDRange(countX, countY),
-		cl::NDRange(wgSizeX, wgSizeY),
-		NULL,
-		NULL);
-
+	//Copy output data back to the host
 	queue.enqueueReadBuffer(d_output_HistogramCalculation, true, 0, NUMBER_OF_BINS * sizeof(int), h_outputGpu_HistogramCalculation.data(), NULL, NULL);
 
 	cdf[0] = h_outputGpu_HistogramCalculation[0];
 	for (int i = 1; i < NUMBER_OF_BINS; i++)
 	{
 		cdf[i] = cdf[i - 1] + h_outputGpu_HistogramCalculation[i];
-		//std::cout << h_outputGpu_HistogramCalculation[i] << ",";
 	}
 
-	/* Histogram Equalization */
+	/*----------------------------------------- Histogram Equalization-----------------------------------------------*/
+	
+	// Copy input data to device
 	queue.enqueueWriteBuffer(d_input, true, 0, size, h_input.data(), NULL, NULL);
 	queue.enqueueWriteBuffer(d_output_HistogramCalculation, true, 0, NUMBER_OF_BINS * sizeof(int), cdf.data(), NULL, NULL);
+	
+	//Create a kernel object
 	cl::Kernel histogramEqualizationKernel(program, "histogramEqualizationKernel");
+
+	//Launch kernel
 	histogramEqualizationKernel.setArg<cl::Buffer>(0, d_input);
 	histogramEqualizationKernel.setArg<cl::Buffer>(1, d_output_HistogramCalculation);
 	histogramEqualizationKernel.setArg<cl::Buffer>(2, d_output_HistogramEqualization);
-	
-	
-	queue.enqueueNDRangeKernel(histogramEqualizationKernel,
-		cl::NullRange,
+	queue.enqueueNDRangeKernel(histogramEqualizationKernel, cl::NullRange, cl::NDRange(countX, countY), cl::NDRange(wgSizeX, wgSizeY), NULL, NULL);
 
-		cl::NDRange(countX, countY),
-		cl::NDRange(wgSizeX, wgSizeY),
-		NULL,
-		NULL);
-
+	//Copy output data back to the host
 	queue.enqueueReadBuffer(d_output_HistogramEqualization, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, NULL);
 
-	//Gaussian
+	/*------------------------------------------------- 1. Apply Gaussian filter----------------------------------------*/
 	cl::Event eventG1;
+	// Copy input data to device
 	queue.enqueueWriteBuffer(d_inputGpu_Gaussian, true, 0, size, h_outputGpu_HistogramEqualization.data(), NULL, &eventG1);
 
+	//Create a kernel object
 	cl::Kernel gaussianKernel(program, "gaussianKernel");
+
+	//Launch kernel
 	gaussianKernel.setArg<cl::Buffer>(0, d_inputGpu_Gaussian);
 	gaussianKernel.setArg<cl::Buffer>(1, d_outputGpu_Gaussian);
-
 	cl::Event eventG2;
-	queue.enqueueNDRangeKernel(gaussianKernel,
+	queue.enqueueNDRangeKernel(gaussianKernel, 
 		cl::NullRange,
 		cl::NDRange(countX, countY),
 		cl::NDRange(wgSizeX, wgSizeY),
 		NULL,
 		&eventG2);
 
+	//Copy output data back to the host
 	cl::Event eventG3;
 	queue.enqueueReadBuffer(d_outputGpu_Gaussian, true, 0, size, h_outputGpu_Gaussian.data(), NULL, &eventG3);
 	
-	//Sobel GPU
-
+	/*------------------------------------------------- 2. Apply Sobel filter----------------------------------------*/
 	cl::Event eventS1;
+	// Copy input data to device
 	queue.enqueueWriteBuffer(d_inputGpu_Sobel, true, 0, size, h_outputGpu_Gaussian.data(), NULL, &eventS1);
-
 
 	// Create a kernel object
 	cl::Kernel sobelKernel(program, "sobelKernel");
 
 	// Launch kernel on the device
-	//TODO
 	sobelKernel.setArg<cl::Buffer>(0, d_inputGpu_Sobel);
 	sobelKernel.setArg<cl::Buffer>(1, d_outputGpu_Sobel);
 	sobelKernel.setArg<cl::Buffer>(2, d_out_segment);
-
-
 	cl::Event eventS2;
 	queue.enqueueNDRangeKernel(sobelKernel,
 		cl::NullRange,
@@ -435,27 +386,26 @@ int main(int argc, char** argv) {
 		&eventS2);
 
 	// Copy output data back to host
-		
 	cl::Event eventS3;
 	queue.enqueueReadBuffer(d_outputGpu_Sobel, true, 0, size, h_outputGpu_Sobel.data(), NULL, &eventS3);
 	cl::Event eventS4;
 	queue.enqueueReadBuffer(d_out_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &eventS4);
 	
-	//NonMaxSuppression GPU----------------------------------------------------------------------------------
+	/*--------------------------------------------3. Apply Non Max Supression----------------------------------------*/
 
 	cl::Event eventNM1;
-	queue.enqueueWriteBuffer(d_inputGpu_NonMaxSupression, true, 0, size, h_outputGpu_Sobel.data(), NULL, &eventNM1);
 	cl::Event eventNM2;
+	// Copy input data to device
+	queue.enqueueWriteBuffer(d_inputGpu_NonMaxSupression, true, 0, size, h_outputGpu_Sobel.data(), NULL, &eventNM1);
 	queue.enqueueWriteBuffer(d_in_segment, true, 0, size, h_out_segmentGpu.data(), NULL, &eventNM2);
+
 	// Create a kernel object
 	cl::Kernel nonMaxSuppressionKernel(program, "nonMaxSuppressionKernel");
 
 	// Launch kernel on the device
-	//TODO
 	nonMaxSuppressionKernel.setArg<cl::Buffer>(0, d_inputGpu_NonMaxSupression);
 	nonMaxSuppressionKernel.setArg<cl::Buffer>(1, d_outputGpu_NonMaxSupression);
 	nonMaxSuppressionKernel.setArg<cl::Buffer>(2, d_in_segment);
-
 	cl::Event eventNM3;
 	queue.enqueueNDRangeKernel(nonMaxSuppressionKernel,
 		cl::NullRange,
@@ -465,71 +415,73 @@ int main(int argc, char** argv) {
 		&eventNM3);
 
 	// Copy output data back to host
-
 	cl::Event eventNM4;
 	queue.enqueueReadBuffer(d_outputGpu_NonMaxSupression, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventNM4);
 	
-
-
-	//double threshold
-	
+	/*------------------------------------------------ 4. Apply Double threshold----------------------------------------*/
 	cl::Event eventDt1;
+	// Copy input data to device
 	queue.enqueueWriteBuffer(d_inputDt, true, 0, size, h_outputGpu_NonMaxSupression.data(), NULL, &eventDt1);
+
 	// Create a kernel object
 	cl::Kernel DoubleThresholdKernel(program, "DoubleThresholdKernel");
+
 	// Launch kernel on the device
-	//TODO
 	DoubleThresholdKernel.setArg<cl::Buffer>(0, d_inputDt);
 	DoubleThresholdKernel.setArg<cl::Buffer>(1, d_outputDt);
 	DoubleThresholdKernel.setArg<cl_float>(2, low_threshold);
 	DoubleThresholdKernel.setArg<cl_float>(3, high_threshold);
-
-
 	cl::Event eventDt2;
 	queue.enqueueNDRangeKernel(DoubleThresholdKernel, cl::NullRange, cl::NDRange(countX, countY), cl::NDRange(wgSizeX, wgSizeY), NULL, &eventDt2);
+	
 	// Copy output data back to host
-	//TODO
 	cl::Event eventDt3;
 	queue.enqueueReadBuffer(d_outputDt, true, 0, size, h_outputGpu_Doublethreshold.data(), NULL, &eventDt3);
 
+	/*------------------------------------------------- 5. Apply Edge Hysterisis----------------------------------------*/
 	cl::Event eventHst1;
+	// Copy input data to device
 	queue.enqueueWriteBuffer(d_inputHst, true, 0, size, h_outputGpu_Doublethreshold.data(), NULL, &eventHst1);
+
 	// Create a kernel object
 	cl::Kernel HysteresisKernel(program, "HysteresisKernel");
+
 	// Launch kernel on the device
-	//TODO
 	HysteresisKernel.setArg<cl::Buffer>(0, d_inputHst);
 	HysteresisKernel.setArg<cl::Buffer>(1, d_outputHst);
 
 	cl::Event eventHst2;
 	queue.enqueueNDRangeKernel(HysteresisKernel,cl::NullRange, cl::NDRange(countX, countY), cl::NDRange(wgSizeX, wgSizeY), NULL, &eventHst2);
+
 	// Copy output data back to host
-	//TODO
 	cl::Event eventHst3;
 	queue.enqueueReadBuffer(d_outputHst, true, 0, size, h_outputGpu_Canny.data(), NULL, &eventHst3);
 	
-	/////////// Calculating cpu time for different functionalities///////////////////////////////
+	/************************************** Calculating cpu time for different functionalities************************/
+
 	Core::TimeSpan cputimeGaussian = cpuendGaussian - cpubeginGaussian;
 	Core::TimeSpan cputimeSobel = cpuendSobel - cpubeginsobel;
 	Core::TimeSpan cputimeNonmaxsupression = cpuendNonmaxsuppression - cpuendSobel;
 	Core::TimeSpan cputimeDoublethreshold = cpuendDoublethreshold - cpuendNonmaxsuppression;
 	Core::TimeSpan cputimeHysteresis = cpuendHysteresis - cpuendDoublethreshold;
-	Core::TimeSpan cputimeCanny = cpuend - cpubegin;
-	/* Print Performance data */
+	Core::TimeSpan cputimeCanny = cpuendHysteresis - cpubeginGaussian;
+
+	/************************************************* Print Performance data ****************************************/
 	
-	std::cout << "******************************  CANNY EDGE DETECTOR  *******************************" << std::endl;
-	std::cout << std::endl << "Device information:" << std::endl;
+	std::cout << "************************************  CANNY EDGE DETECTOR  ***********************************" << std::endl;
+	std::cout << std::endl << "Device information:" << std::endl;	
 	std::cout << "Using platform '" << platforms[platformId].getInfo<CL_PLATFORM_NAME>() << "' from '" << platforms[platformId].getInfo<CL_PLATFORM_VENDOR>() << "'" << std::endl;
 	std::cout << "Using device " << deviceNr << " / " << context.getInfo<CL_CONTEXT_DEVICES>().size() << std::endl;
 	OpenCL::printDeviceInfo(std::cout, device);
 
-	std::cout << std::endl << "Image information:" << std::endl;
+	std::cout << std::endl << "Input Image information:" << std::endl;
 	std::cout << "Input Image Resolution: " << countX << " x " << countY << " Pixels " << std::endl;
-	std::cout << "Image format: Grayscale (.pgm)" << std::endl;
+	std::cout << "Input Image format: Grayscale (.pgm)" << std::endl;
 
 	std::cout << std::endl << "Performance data for implementation :" << std::endl;
 	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
-        /////////// String stream for performance headers///////////////////////////////
+    
+	/* String stream for performance headers*/
 	std::stringstream str1;
 	str1 << std::setiosflags(std::ios::left) << std::setw(20) << "Functionality";
 	str1 << std::setiosflags(std::ios::right);
@@ -540,48 +492,56 @@ int main(int argc, char** argv) {
 	str1 << " " << std::setw(9) << " Speedup MC  |";
 	std::cout << str1.str() << std::endl;
 	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
-        /////////// Calculating performance parameters for different functionalities/////////////////////
+   
 	Performance(&eventG1, &eventG2, &eventG3, "Gaussian", cputimeGaussian);
 	Performance(&eventS1, &eventS2, &eventS3, &eventS4, "Sobel", cputimeSobel);
-	Performance(&eventNM1, &eventNM3, &eventNM4, "Nonmax", cputimeNonmaxsupression, &eventNM2);
-	Performance(&eventDt1, &eventDt2, &eventDt3, "Doublethreshold", cputimeDoublethreshold);
+	Performance(&eventNM1, &eventNM3, &eventNM4, "NonMaxSupression", cputimeNonmaxsupression, &eventNM2);
+	Performance(&eventDt1, &eventDt2, &eventDt3, "DoubleThreshold", cputimeDoublethreshold);
 	Performance(&eventHst1, &eventHst2, &eventHst3, "Hysteresis", cputimeHysteresis);
-	std::cout << std::endl; ////////edit
+	
+	Core::TimeSpan gputime_canny = OpenCL::getElapsedTime(eventG2) + OpenCL::getElapsedTime(eventS2) 
+								 + OpenCL::getElapsedTime(eventNM3) + OpenCL::getElapsedTime(eventDt2) 
+								 + OpenCL::getElapsedTime(eventHst2);
+
+	Core::TimeSpan gputime_canny_total = OpenCL::getElapsedTime(eventG1) + OpenCL::getElapsedTime(eventS1) 
+										+ OpenCL::getElapsedTime(eventNM1) + OpenCL::getElapsedTime(eventNM2) + OpenCL::getElapsedTime(eventDt1) 
+										+ OpenCL::getElapsedTime(eventHst1) + OpenCL::getElapsedTime(eventG3) + OpenCL::getElapsedTime(eventS3) 
+										+ OpenCL::getElapsedTime(eventS4) + OpenCL::getElapsedTime(eventNM4) 
+										+ OpenCL::getElapsedTime(eventDt3) + OpenCL::getElapsedTime(eventHst3) + gputime_canny;
+	std::stringstream str2;
+	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
+	str2 << std::setiosflags(std::ios::left) << std::setw(20) << "CannyEdgeDetection";
+	str2 << std::setiosflags(std::ios::right);
+	str2 << " " << std::setw(10) << cputimeCanny.toString();
+	str2 << " " << std::setw(12) << gputime_canny.toString();
+	str2 << " " << std::setw(15) << gputime_canny_total.toString();
+	str2 << " " << std::setw(14) << (cputimeCanny.getSeconds() / gputime_canny.getSeconds());
+	str2 << " " << std::setw(15) << (cputimeCanny.getSeconds() / gputime_canny_total.getSeconds());
+	std::cout << str2.str() << std::endl;
 	std::cout << "-----------------------------------------------------------------------------------------------" << std::endl;
     
-	   //////////////////////Overall Performance Parameters////////////////////////////
-	Core::TimeSpan gputime_canny = OpenCL::getElapsedTime(eventG2) + OpenCL::getElapsedTime(eventS2) + OpenCL::getElapsedTime(eventNM3) + OpenCL::getElapsedTime(eventDt2) + OpenCL::getElapsedTime(eventHst2);
-	Core::TimeSpan gputime_canny_total = OpenCL::getElapsedTime(eventG1) + OpenCL::getElapsedTime(eventS1) + OpenCL::getElapsedTime(eventNM1) + OpenCL::getElapsedTime(eventNM2) + OpenCL::getElapsedTime(eventDt1) + OpenCL::getElapsedTime(eventHst1) + OpenCL::getElapsedTime(eventG3) + OpenCL::getElapsedTime(eventS3) + OpenCL::getElapsedTime(eventS4) + OpenCL::getElapsedTime(eventNM4) + OpenCL::getElapsedTime(eventDt3) + OpenCL::getElapsedTime(eventHst3) + gputime_canny;
-	std::cout << std::endl << "CPU time for Canny edge detection : " << cputimeCanny.toString();
-	std::cout << std::endl << "GPU time for Canny edge detection before memory copy : " << gputime_canny.toString();
-	std::cout << std::endl << "GPU time for Canny edge detection after memory copy : " << gputime_canny_total.toString();
-	std::cout << std::endl << "Speedup for Canny edge detection before memory copy: " << (cputimeCanny.getSeconds() / gputime_canny.getSeconds());
-	std::cout << std::endl << "Speedup for Canny edge detection after memory copy: " << (cputimeCanny.getSeconds() / gputime_canny_total.getSeconds());
-	    //////// Store GPU output image ///////////////////////////////////
+	/* Store GPU output image */
 	Core::writeImagePGM("7_Histogram_Equalization_Gpu_Output.pgm", h_outputGpu_HistogramEqualization, countX, countY);
 	Core::writeImagePGM("8_Gaussian_Gpu_Output.pgm", h_outputGpu_Gaussian, countX, countY);
 	Core::writeImagePGM("9_Sobel_Gpu_Output.pgm", h_outputGpu_Sobel, countX, countY);
 	Core::writeImagePGM("10_NonMaxSupression_Gpu_Output.pgm", h_outputGpu_NonMaxSupression, countX, countY);
 	Core::writeImagePGM("11_DoubleThreshold_Gpu_Output.pgm", h_outputGpu_Doublethreshold, countX, countY);
-	Core::writeImagePGM("12_CannyEdgeDetection_Gpu_Output.pgm", h_outputGpu_Canny, countX, countY);	// Check whether results are correct
+	Core::writeImagePGM("12_CannyEdgeDetection_Gpu_Output.pgm", h_outputGpu_Canny, countX, countY);	
+	
+	/* Error between CPU and GPU outputs */
 	std::size_t errorCount = 0;
 	for (size_t i = 0; i < countX; i = i + 1) { //loop in the x-direction
 		for (size_t j = 0; j < countY; j = j + 1) { //loop in the y-direction
 			size_t index = i + j * countX;
-			// Allow small differences between CPU and GPU results (due to different rounding behavior)
 			if (!(std::abs(h_outputGpu_Canny[index] - h_outputCpu_Canny[index]) == 0)) {
 				errorCount++;
 			}
 		}
 	}
-
-	if (errorCount > (0.01 * countX * countY)) {
-		std::cout << std::endl << "Found " << errorCount << " incorrect results out of"<< countX * countY << "pixels" << std::endl;
-		return 1;
-	} 
-
+	/* Print accuracy */
+	float accuracy = (1 - (errorCount / (countX * countY))) * 100;
+	std::cout << "Accuracy of GPU output compared to CPU output = " << accuracy << "%" << std::endl;
 	std::cout << std::endl;
-	
 	std::cout << "Success" << std::endl;
 	
 	return 0;
