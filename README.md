@@ -36,7 +36,7 @@ Instructions to run this code in Visual Studio
       Configure the "CannyEdgeDetection (executable)" as a startup item.
 ### Execution
   1. Execution is started by clicking "DisparityMap.exe" play button.
-  2. For each of these [steps](##Steps in Canny_edge_detection), a CPU and GPU output image will be generated and saved in out/build/x64-Debug.
+  2. For each of these [steps](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/mehroz/README.md#steps-in-canny_edge_detection), a CPU and GPU output image will be generated and saved in out/build/x64-Debug.
 
 ### Executing different example
 1. Differnt sample examples are placed in the images directory (src/InputImages).
