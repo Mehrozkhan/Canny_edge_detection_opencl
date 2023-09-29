@@ -9,7 +9,7 @@ Canny edge detection consists of 5 steps.
 4. Double Threshold
 5. Hysteresis edge tracking
 
-![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/main/CannyImage_Eg.PNG)
+![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/main/CannyImage_readme.PNG)
 
 
 
@@ -42,7 +42,7 @@ Instructions to run this code in Visual Studio
 
 ### Executing different example
 1. Different sample examples are placed in the images directory (src/InputImages).
-2. To run different example set we have to change the image name in the CannyEdgeDetection.cpp source file(Provide the complete path for images).
+2. To run different example set we have to change the image name in the CannyEdgeDetection.cpp source file.
       - https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/e03c6eaf914d0a8ef5ae45ec18fad20cd608fe6c/src/CannyEdgeDetection.cpp#L211 
 3. Rebuid the project and execute.
 
