@@ -6,7 +6,7 @@ Canny edge detection consists of 5 steps.
 1. Gaussian Filter
 2. Sobel Filter
 3. Non-Max Suppression
-4. Double Thresold
+4. Double Threshold
 5. Hysteresis edge tracking
 
 ![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/assets/25463908/b7f99bb2-d237-41bf-9f22-382f43b8a7bf)
