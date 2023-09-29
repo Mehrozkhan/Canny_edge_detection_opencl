@@ -6,10 +6,12 @@ Canny edge detection consists of 5 steps.
 1. Gaussian Filter
 2. Sobel Filter
 3. Non-Max Suppression
-4. Double Thresold
+4. Double Threshold
 5. Hysteresis edge tracking
 
---TODO-- (Add a collage of images with names of step in one row)
+![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/assets/25463908/13c2317a-75ef-487d-8f87-d18f3a378eda)
+
+
 
 Here is how you can use this code to determine edges in the images and the intermediate results.  
 
@@ -35,12 +37,12 @@ Instructions to run this code in Visual Studio
       Expand "CannyEdgeDetection Project"
       Configure the "CannyEdgeDetection (executable)" as a startup item.
 ### Execution
-  1. Execution is started by clicking "DisparityMap.exe" play button.
+  1. Execution is started by clicking "CannyEdgeDetection.exe" play button.
   2. For each of these [steps](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/mehroz/README.md#steps-in-canny_edge_detection), a CPU and GPU output image will be generated and saved in out/build/x64-Debug.
 
 ### Executing different example
-1. Differnt sample examples are placed in the images directory (src/InputImages).
-2. To run differnt example set we have to change the image name in the CannyEdgeDetection.cpp source file(Provide the complete path for images).
-      - --TODO-- (code line to change)
+1. Different sample examples are placed in the images directory (src/InputImages).
+2. To run different example set we have to change the image name in the CannyEdgeDetection.cpp source file(Provide the complete path for images).
+      - https://github.com/Mehrozkhan/Canny_edge_detection_opencl/blob/e03c6eaf914d0a8ef5ae45ec18fad20cd608fe6c/src/CannyEdgeDetection.cpp#L211 
 3. Rebuid the project and execute.
 

@@ -539,7 +539,8 @@ int main(int argc, char** argv)
 		}
 	}
 	/* Print accuracy */
-	float accuracy = (1 - (errorCount / (countX * countY))) * 100;
+	float accuracy = (1- (float) errorCount/ (float)(countX * countY)) *100 ;
+	//accuracy = accuracy * 100;
 	std::cout << "Accuracy of GPU output compared to CPU output = " << accuracy << "%" << std::endl;
 	std::cout << std::endl;
 	std::cout << "Success" << std::endl;
