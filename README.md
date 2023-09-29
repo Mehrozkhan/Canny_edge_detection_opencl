@@ -9,7 +9,8 @@ Canny edge detection consists of 5 steps.
 4. Double Threshold
 5. Hysteresis edge tracking
 
-![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/assets/25463908/b7f99bb2-d237-41bf-9f22-382f43b8a7bf)
+![image](https://github.com/Mehrozkhan/Canny_edge_detection_opencl/assets/25463908/13c2317a-75ef-487d-8f87-d18f3a378eda)
+
 
 
 Here is how you can use this code to determine edges in the images and the intermediate results.  
